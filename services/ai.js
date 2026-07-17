@@ -122,7 +122,7 @@ async function callGeminiInsight(prompt) {
         throw new Error('NO_API_KEY');
     }
 
-    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+    const model = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 
     const response = await ai.models.generateContent({
         model,
