@@ -8,14 +8,15 @@ const {
 
 let client = null;
 
-function getOpenAIClient() {
-    if (!process.env.OPENAI_API_KEY) {
+function getAIClient() {
+    if (!process.env.DASHSCOPE_API_KEY) {
         return null;
     }
 
     if (!client) {
         client = new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY
+            apiKey: process.env.DASHSCOPE_API_KEY,
+            baseURL: process.env.DASHSCOPE_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1'
         });
     }
 
@@ -115,23 +116,32 @@ ${recentText}
 `.trim();
 }
 
-async function callOpenAIInsight(prompt) {
-    const client = getOpenAIClient();
+async function callAIInsight(prompt) {
+    const client = getAIClient();
 
     if (!client) {
         throw new Error('NO_API_KEY');
     }
 
-    const response = await client.responses.create({
-        model: process.env.OPENAI_MODEL || 'gpt-5.4',
-        input: prompt
+    const model = process.env.AI_MODEL || 'qwen-plus';
+
+    const response = await client.chat.completions.create({
+        model,
+        messages: [
+            {
+                role: 'user',
+                content: prompt
+            }
+        ],
+        temperature: 0.7,
+        max_tokens: 600
     });
 
-    return response.output_text?.trim() || '⚠️ ไม่สามารถสร้างคำวิเคราะห์ได้ในขณะนี้';
+    return response.choices[0]?.message?.content?.trim() || '⚠️ ไม่สามารถสร้างคำวิเคราะห์ได้ในขณะนี้';
 }
 
 async function generateAIInsight(userId) {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.DASHSCOPE_API_KEY) {
         return '⚠️ ระบบวิเคราะห์ยังไม่พร้อมใช้งานในตอนนี้\nกรุณาลองใหม่ภายหลัง';
     }
 
@@ -144,9 +154,9 @@ async function generateAIInsight(userId) {
         }
 
         const prompt = buildPrompt(data);
-        return await callOpenAIInsight(prompt);
+        return await callAIInsight(prompt);
     } catch (error) {
-        console.error('❌ OpenAI insight error:', {
+        console.error('❌ AI insight error:', {
             message: error.message,
             status: error.status,
             code: error.code,
