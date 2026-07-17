@@ -1,9 +1,10 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 
 const express = require('express');
 const line = require('@line/bot-sdk');
 const {
-    db,
+    pool,
+    initDb,
     getTodaySummary,
     getRecentTransactions,
     getTodayCategorySummary,
@@ -303,7 +304,6 @@ const CATEGORY_RULES = [
 app.post('/webhook', line.middleware(config), (req, res) => {
     const events = req.body.events || [];
 
-    // ตอบ LINE ให้เร็วที่สุดก่อน
     res.status(200).end();
 
     Promise.all(
@@ -321,14 +321,14 @@ app.post('/webhook', line.middleware(config), (req, res) => {
 
 app.use(express.json());
 
-
 app.post('/api/reset-today', async (req, res) => {
     try {
         const { userId } = req.body || {};
 
         if (!requireUserId(res, userId)) return;
 
-        const result = deleteTodayTransactionsByUser(userId);
+        // Migrated: Awaiting async engine call
+        const result = await deleteTodayTransactionsByUser(userId);
 
         res.json({
             ok: true,
@@ -363,7 +363,6 @@ function classifyCategoryOverride(text) {
 
     if (!input) return null;
 
-    // 1) ค่าแรง ต้องชนะก่อน ถ้ามีคำว่าจ้าง/คน/แรงงาน
     if (
         /(จ้าง|ค่าจ้าง|ค่าแรง|แรงงาน|คนงาน|ลูกน้อง)/.test(input) &&
         !/(ขาย|รับเงิน|ได้เงิน)/.test(input)
@@ -371,7 +370,6 @@ function classifyCategoryOverride(text) {
         return 'ค่าแรง';
     }
 
-    // 2) ค่าซ่อม / บำรุงรักษา
     if (
         /(ซ่อม|ซ่อมแซม|ค่าซ่อม|บำรุง|บำรุงรักษา|อะไหล่|เปลี่ยนอะไหล่|repair)/.test(input)
     ) {
@@ -683,57 +681,52 @@ function parseMessage(text) {
 // =====================
 // SAVE TRANSACTION
 // =====================
-function saveTransaction(userId, tx, sourceMessageId, sourceTxnIndex) {
+async function saveTransaction(userId, tx, sourceMessageId, sourceTxnIndex) {
     const { type, amount, category, note } = tx;
 
     if (!userId || !type || !amount || amount <= 0) {
-        return Promise.reject(new Error('Invalid transaction data'));
+        throw new Error('Invalid transaction data');
     }
 
-    if (!sourceMessageId && sourceMessageId !== null) {
-        return Promise.reject(new Error('Missing sourceMessageId'));
+    if (sourceMessageId === undefined || sourceMessageId === null) {
+        throw new Error('Missing sourceMessageId');
     }
 
-    return new Promise((resolve, reject) => {
-        try {
-            const stmt = db.prepare(`
-                INSERT INTO transactions (
-                    userId,
-                    type,
-                    amount,
-                    category,
-                    note,
-                    sourceMessageId,
-                    sourceTxnIndex
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            `);
+    const query = `
+        INSERT INTO transactions (
+            "userId",
+            type,
+            amount,
+            category,
+            note,
+            "sourceMessageId",
+            "sourceTxnIndex"
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id
+    `;
 
-            const result = stmt.run(
-                userId,
-                type,
-                amount,
-                category,
-                note || 'ไม่ระบุ',
-                sourceMessageId,
-                sourceTxnIndex
-            );
+    const res = await pool.query(query, [
+        userId,
+        type,
+        amount,
+        category,
+        note || 'ไม่ระบุ',
+        sourceMessageId,
+        sourceTxnIndex
+    ]);
 
-            resolve({
-                id: result.lastInsertRowid,
-                changes: result.changes
-            });
-        } catch (err) {
-            reject(err);
-        }
-    });
+    return {
+        id: res.rows[0].id,
+        changes: res.rowCount
+    };
 }
 
 // =====================
 // SUMMARY
 // =====================
-function getTodaySummaryAsync(userId) {
-    return Promise.resolve(getTodaySummary(userId));
+async function getTodaySummaryAsync(userId) {
+    return await getTodaySummary(userId);
 }
 
 async function safeReply(replyToken, text) {
@@ -761,7 +754,7 @@ async function safePush(userId, text) {
 // =====================
 async function handleEvent(event) {
     if (event.type === 'follow') {
-        return safeReply(event.replyToken, WELCOME_MESSAGE);
+        return await safeReply(event.replyToken, WELCOME_MESSAGE);
     }
 
     let userId = null;
@@ -777,11 +770,11 @@ async function handleEvent(event) {
         const text = event.message.text.trim();
 
         if (isHelpCommand(text)) {
-            return safeReply(event.replyToken, HELP_MESSAGE);
+            return await safeReply(event.replyToken, HELP_MESSAGE);
         }
 
         if (isDashboardCommand(text)) {
-            return safeReply(event.replyToken, formatDashboardMessage(userId));
+            return await safeReply(event.replyToken, formatDashboardMessage(userId));
         }
 
         console.log('[INCOMING]', {
@@ -799,7 +792,7 @@ async function handleEvent(event) {
 
         if (isAIInsightCommand(text)) {
             const insight = await generateAIInsight(userId);
-            return safeReply(event.replyToken, insight);
+            return await safeReply(event.replyToken, insight);
         }
 
         const parsedList = parseMessage(text);
@@ -807,11 +800,9 @@ async function handleEvent(event) {
         console.log('[PARSED]', parsedList);
 
         if (parsedList.length > 0) {
-            await Promise.all(
-                parsedList.map((tx, index) =>
-                    saveTransaction(userId, tx, sourceMessageId, index)
-                )
-            );
+            for (let index = 0; index < parsedList.length; index++) {
+                await saveTransaction(userId, parsedList[index], sourceMessageId, index);
+            }
         }
 
         if (parsedList.length > 0) {
@@ -852,7 +843,7 @@ async function handleEvent(event) {
         console.error('❌ handleEvent error:', error);
 
         const isDuplicate =
-            error && error.message && error.message.includes('UNIQUE constraint failed');
+            error && error.message && (error.message.includes('unique constraint') || error.code === '23505');
 
         if (isDuplicate) {
             console.log('[DUPLICATE]', {
@@ -892,7 +883,7 @@ app.get('/', (req, res) => {
 // =====================
 // PRODUCTION API FOR DASHBOARD
 // =====================
-app.get('/api/recent', (req, res) => {
+app.get('/api/recent', async (req, res) => {
     try {
         const { userId } = req.query;
         const limit = Number(req.query.limit || 20);
@@ -900,7 +891,7 @@ app.get('/api/recent', (req, res) => {
         if (!requireUserId(res, userId)) return;
 
         const safeLimit = Math.min(Math.max(limit, 1), 100);
-        const rows = getRecentTransactions(userId, safeLimit);
+        const rows = await getRecentTransactions(userId, safeLimit);
 
         res.json({
             ok: true,
@@ -916,13 +907,13 @@ app.get('/api/recent', (req, res) => {
     }
 });
 
-app.get('/api/category-summary', (req, res) => {
+app.get('/api/category-summary', async (req, res) => {
     try {
         const { userId } = req.query;
 
         if (!requireUserId(res, userId)) return;
 
-        const rows = getTodayCategorySummary(userId);
+        const rows = await getTodayCategorySummary(userId);
 
         res.json({
             ok: true,
@@ -938,7 +929,7 @@ app.get('/api/category-summary', (req, res) => {
     }
 });
 
-app.get('/api/daily-summary', (req, res) => {
+app.get('/api/daily-summary', async (req, res) => {
     try {
         const { userId } = req.query;
         const days = Number(req.query.days || 7);
@@ -946,7 +937,7 @@ app.get('/api/daily-summary', (req, res) => {
         if (!requireUserId(res, userId)) return;
 
         const safeDays = Math.min(Math.max(days, 1), 90);
-        const rows = getDailySummary(userId, safeDays);
+        const rows = await getDailySummary(userId, safeDays);
 
         res.json({
             ok: true,
@@ -962,7 +953,7 @@ app.get('/api/daily-summary', (req, res) => {
     }
 });
 
-app.get('/api/monthly-summary', (req, res) => {
+app.get('/api/monthly-summary', async (req, res) => {
     try {
         const { userId } = req.query;
         const months = Number(req.query.months || 6);
@@ -970,7 +961,7 @@ app.get('/api/monthly-summary', (req, res) => {
         if (!requireUserId(res, userId)) return;
 
         const safeMonths = Math.min(Math.max(months, 1), 24);
-        const rows = getMonthlySummary(userId, safeMonths);
+        const rows = await getMonthlySummary(userId, safeMonths);
 
         res.json({
             ok: true,
@@ -990,7 +981,7 @@ app.get('/api/monthly-summary', (req, res) => {
 // DEBUG API
 // =====================
 if (process.env.ENABLE_DEBUG === 'true') {
-    app.get('/debug/recent', (req, res) => {
+    app.get('/debug/recent', async (req, res) => {
         try {
             const { userId } = req.query;
             const limit = Number(req.query.limit || 20);
@@ -998,7 +989,7 @@ if (process.env.ENABLE_DEBUG === 'true') {
             if (!requireUserId(res, userId)) return;
 
             const safeLimit = Math.min(Math.max(limit, 1), 100);
-            const rows = getRecentTransactions(userId, safeLimit);
+            const rows = await getRecentTransactions(userId, safeLimit);
 
             res.json({
                 ok: true,
@@ -1014,13 +1005,13 @@ if (process.env.ENABLE_DEBUG === 'true') {
         }
     });
 
-    app.get('/debug/category-summary', (req, res) => {
+    app.get('/debug/category-summary', async (req, res) => {
         try {
             const { userId } = req.query;
 
             if (!requireUserId(res, userId)) return;
 
-            const rows = getTodayCategorySummary(userId);
+            const rows = await getTodayCategorySummary(userId);
 
             res.json({
                 ok: true,
@@ -1036,7 +1027,7 @@ if (process.env.ENABLE_DEBUG === 'true') {
         }
     });
 
-    app.get('/debug/daily-summary', (req, res) => {
+    app.get('/debug/daily-summary', async (req, res) => {
         try {
             const { userId } = req.query;
             const days = Number(req.query.days || 7);
@@ -1044,7 +1035,7 @@ if (process.env.ENABLE_DEBUG === 'true') {
             if (!requireUserId(res, userId)) return;
 
             const safeDays = Math.min(Math.max(days, 1), 90);
-            const rows = getDailySummary(userId, safeDays);
+            const rows = await getDailySummary(userId, safeDays);
 
             res.json({
                 ok: true,
@@ -1059,7 +1050,8 @@ if (process.env.ENABLE_DEBUG === 'true') {
             });
         }
     });
-    app.get('/debug/monthly-summary', (req, res) => {
+    
+    app.get('/debug/monthly-summary', async (req, res) => {
         try {
             const { userId } = req.query;
             const months = Number(req.query.months || 6);
@@ -1067,7 +1059,7 @@ if (process.env.ENABLE_DEBUG === 'true') {
             if (!requireUserId(res, userId)) return;
 
             const safeMonths = Math.min(Math.max(months, 1), 24);
-            const rows = getMonthlySummary(userId, safeMonths);
+            const rows = await getMonthlySummary(userId, safeMonths);
 
             res.json({
                 ok: true,
@@ -1088,6 +1080,32 @@ app.get('/dashboard', (req, res) => {
     res.send(renderDashboardPage(process.env.LIFF_ID));
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+// Sequentially wait for DB table & index initialization before listening
+initDb()
+    .then(() => {
+        const server = app.listen(PORT, () => {
+            console.log(`Server running on port ${PORT}`);
+        });
+
+        // Graceful shutdown protocol
+        const shutdown = () => {
+            console.log('🔄 Shutdown signal received. Closing pool connections...');
+            server.close(async () => {
+                try {
+                    await pool.end();
+                    console.log('✅ PostgreSQL pool connections drained gracefully.');
+                    process.exit(0);
+                } catch (err) {
+                    console.error('❌ Error during pool drainage:', err);
+                    process.exit(1);
+                }
+            });
+        };
+
+        process.on('SIGTERM', shutdown);
+        process.on('SIGINT', shutdown);
+    })
+    .catch((err) => {
+        console.error('❌ App startup terminated due to initialization failure:', err);
+        process.exit(1);
+    });
