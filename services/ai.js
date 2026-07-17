@@ -1,4 +1,4 @@
-﻿const OpenAI = require('openai');
+const OpenAI = require('openai');
 const {
     getTodaySummary,
     getRecentTransactions,
@@ -22,11 +22,12 @@ function getOpenAIClient() {
     return client;
 }
 
-function buildInsightData(userId) {
-    const todaySummary = getTodaySummary(userId);
-    const daily = getDailySummary(userId, 7);
-    const category = getTodayCategorySummary(userId);
-    const recent = getRecentTransactions(userId, 15);
+async function buildInsightData(userId) {
+    // Migrated: Awaiting previously synchronous functions
+    const todaySummary = await getTodaySummary(userId);
+    const daily = await getDailySummary(userId, 7);
+    const category = await getTodayCategorySummary(userId);
+    const recent = await getRecentTransactions(userId, 15);
 
     return {
         todaySummary,
@@ -134,15 +135,15 @@ async function generateAIInsight(userId) {
         return '⚠️ ระบบวิเคราะห์ยังไม่พร้อมใช้งานในตอนนี้\nกรุณาลองใหม่ภายหลัง';
     }
 
-    const data = buildInsightData(userId);
-
-    if (!hasEnoughData(data)) {
-        return '📊 ยังมีข้อมูลไม่เพียงพอสำหรับการวิเคราะห์\nลองบันทึกเพิ่มอีกสัก 2-3 รายการแล้วลองใหม่อีกครั้ง';
-    }
-
-    const prompt = buildPrompt(data);
-
     try {
+        // Migrated: Awaiting asynchronous composite object generation
+        const data = await buildInsightData(userId);
+
+        if (!hasEnoughData(data)) {
+            return '📊 ยังมีข้อมูลไม่เพียงพอสำหรับการวิเคราะห์\nลองบันทึกเพิ่มอีกสัก 2-3 รายการแล้วลองใหม่อีกครั้ง';
+        }
+
+        const prompt = buildPrompt(data);
         return await callOpenAIInsight(prompt);
     } catch (error) {
         console.error('❌ OpenAI insight error:', {
