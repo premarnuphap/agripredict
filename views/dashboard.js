@@ -3,12 +3,12 @@ function renderDashboardPage(liffId) {
         return `
             <html>
                 <head>
-                    <title>Dashboard</title>
+                    <title>แดชบอร์ดผู้ช่วยเกษตรกร</title>
                     <meta name="viewport" content="width=device-width, initial-scale=1" />
-                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
                     <style>
                         body {
-                            font-family: 'Inter', -apple-system, sans-serif;
+                            font-family: 'Sarabun', 'Inter', -apple-system, sans-serif;
                             padding: 40px 24px;
                             background: #F5F2EA;
                             color: #223344;
@@ -29,7 +29,7 @@ function renderDashboardPage(liffId) {
                             text-align: center;
                         }
                         h1 {
-                            font-size: 24px;
+                            font-size: 22px;
                             font-weight: 600;
                             color: #2F6F57;
                             margin-bottom: 8px;
@@ -47,9 +47,9 @@ function renderDashboardPage(liffId) {
                 </head>
                 <body>
                     <div class="box">
-                        <h1>📊 แดชบอร์ดการเงิน</h1>
-                        <p class="error">Missing LIFF ID</p>
-                        <p>กรุณาตั้งค่า LIFF_ID ใน server</p>
+                        <h1>📊 แดชบอร์ดผู้ช่วยการตัดสินใจ</h1>
+                        <p class="error">ไม่พบรหัส LIFF ID</p>
+                        <p>กรุณาตั้งค่า LIFF_ID ในระบบ Server ก่อนเริ่มต้นใช้งาน</p>
                     </div>
                 </body>
             </html>
@@ -59,9 +59,9 @@ function renderDashboardPage(liffId) {
     return `
         <html>
             <head>
-                <title>Farm Decision Assistant</title>
+                <title>ผู้ช่วยตัดสินใจเพื่อเกษตรกรยุคใหม่</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
                 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
                 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
                 <style>
@@ -72,7 +72,7 @@ function renderDashboardPage(liffId) {
                         -webkit-tap-highlight-color: transparent;
                     }
                     body {
-                        font-family: 'Inter', -apple-system, sans-serif;
+                        font-family: 'Sarabun', 'Inter', -apple-system, sans-serif;
                         background: #F5F2EA;
                         color: #223344;
                         line-height: 1.6;
@@ -193,7 +193,7 @@ function renderDashboardPage(liffId) {
                         background: transparent;
                         border: none;
                         outline: none;
-                        font-family: 'Inter', sans-serif;
+                        font-family: 'Sarabun', sans-serif;
                         font-size: 14px;
                         font-weight: 600;
                         color: #2F6F57;
@@ -217,6 +217,7 @@ function renderDashboardPage(liffId) {
                     .toolbar button {
                         border: none;
                         outline: none;
+                        font-family: 'Sarabun', sans-serif;
                         background: rgba(111, 143, 114, 0.1);
                         color: #2F6F57;
                         font-size: 13px;
@@ -261,7 +262,7 @@ function renderDashboardPage(liffId) {
                         transform: scale(0.995);
                     }
                     .section-title {
-                        font-size: 14px;
+                        font-size: 13px;
                         text-transform: uppercase;
                         letter-spacing: 0.8px;
                         color: #6F8F72;
@@ -312,7 +313,7 @@ function renderDashboardPage(liffId) {
                     .ai-text h3 {
                         font-size: 18px;
                         font-weight: 600;
-                        line-height: 1.3;
+                        line-height: 1.4;
                         color: #FAFAF8;
                     }
                     .ai-text p {
@@ -386,7 +387,8 @@ function renderDashboardPage(liffId) {
                         background: #FAFAF8;
                     }
                     .health-number {
-                        font-size: 20px;
+                        font-family: 'Inter', sans-serif;
+                        font-size: 22px;
                         font-weight: 700;
                         color: #223344;
                         line-height: 1;
@@ -412,16 +414,16 @@ function renderDashboardPage(liffId) {
                     /* SECTION 5: Season Timeline */
                     .timeline-scroll {
                         overflow-x: auto;
-                        scrollbar-width: none; /* Firefox */
+                        scrollbar-width: none;
                         display: flex;
                         gap: 8px;
                         padding-bottom: 4px;
                     }
                     .timeline-scroll::-webkit-scrollbar {
-                        display: none; /* Safari/Chrome */
+                        display: none;
                     }
                     .timeline-month {
-                        flex: 0 0 72px;
+                        flex: 0 0 76px;
                         text-align: center;
                         padding: 10px 4px;
                         border-radius: 12px;
@@ -442,7 +444,7 @@ function renderDashboardPage(liffId) {
                         color: #223344;
                     }
                     .month-stage {
-                        font-size: 9px;
+                        font-size: 10px;
                         font-weight: 500;
                         color: #6F8F72;
                         margin-top: 4px;
@@ -500,6 +502,7 @@ function renderDashboardPage(liffId) {
                         margin-bottom: 12px;
                     }
                     .rec-action-btn {
+                        font-family: 'Sarabun', sans-serif;
                         background: #2F6F57;
                         color: #FAFAF8;
                         border: none;
@@ -679,7 +682,7 @@ function renderDashboardPage(liffId) {
                         text-overflow: ellipsis;
                     }
 
-                    /* Helper hidden input / layout logic components */
+                    /* Helper hidden components */
                     .hidden-input-field {
                         display: none;
                     }
@@ -711,14 +714,14 @@ function renderDashboardPage(liffId) {
                 <div class="sticky-header">
                     <div class="header-content">
                         <div class="header-left">
-                            <span class="farm-title">🌱 Greenacre Valley</span>
-                            <span class="header-date" id="currentDateDisplay">July 2026</span>
+                            <span class="farm-title">🌱 ฟาร์มกรีนเอเคอร์</span>
+                            <span class="header-date" id="currentDateDisplay">กรกฎาคม 2026</span>
                         </div>
                         <div class="header-right">
                             <div class="weather-badge">
                                 <span>🌧</span> <span>28°C</span>
                             </div>
-                            <div class="profile-avatar" id="avatarLetter">G</div>
+                            <div class="profile-avatar" id="avatarLetter">ก</div>
                         </div>
                     </div>
                 </div>
@@ -727,8 +730,8 @@ function renderDashboardPage(liffId) {
                     <!-- Greeting Block -->
                     <div class="welcome-banner">
                         <div>
-                            <h2 class="greeting-title">Good Morning,</h2>
-                            <p class="greeting-subtitle">Ready to manage your farm?</p>
+                            <h2 class="greeting-title">สวัสดีตอนเช้า,</h2>
+                            <p class="greeting-subtitle">วันนี้พร้อมจัดการฟาร์มของคุณแล้วหรือยัง?</p>
                         </div>
                         <div class="hidden-input-field" id="userText">กำลังโหลด...</div>
                     </div>
@@ -753,13 +756,13 @@ function renderDashboardPage(liffId) {
                     <!-- SECTION 2: AI Insight Card (HERO) -->
                     <div class="premium-card ai-hero-card">
                         <div class="ai-badge">
-                            <span>✨ Smart Assistant</span>
+                            <span>✨ ผู้ช่วยวิเคราะห์ AI</span>
                         </div>
                         <div class="ai-insight-content">
                             <div class="ai-emoji">📈</div>
                             <div class="ai-text">
-                                <h3 id="heroInsightTitle">Income increased 12%.</h3>
-                                <p id="heroInsightDesc">Rainy season starts in 18 days. We suggest optimizing your fertilizer schedule to minimize soil runoff.</p>
+                                <h3 id="heroInsightTitle">รายได้รวมเพิ่มขึ้น 12%</h3>
+                                <p id="heroInsightDesc">ฤดูฝนกำลังจะเริ่มต้นในอีก 18 วัน แนะนำให้เตรียมแผนการใส่ปุ๋ยล่วงหน้าเพื่อป้องกันหน้าดินชะล้างและสูญเสียแร่ธาตุ</p>
                             </div>
                         </div>
                     </div>
@@ -782,117 +785,117 @@ function renderDashboardPage(liffId) {
                             <span class="kpi-trend positive">↑ 15%</span>
                         </div>
                         <div class="kpi-card">
-                            <span class="kpi-label">กระแสเงินสดหมุนเวียน</span>
+                            <span class="kpi-label">กระแสเงินสด</span>
                             <span class="kpi-value" style="font-size: 16px;">สม่ำเสมอ</span>
-                            <span class="kpi-trend positive" style="color: #6F8F72;">Stable</span>
+                            <span class="kpi-trend positive" style="color: #6F8F72;">มั่นคง</span>
                         </div>
                     </div>
 
                     <!-- SECTION 4: Farm Health Score -->
                     <div class="premium-card">
-                        <h3 class="section-title">Farm Health Score</h3>
+                        <h3 class="section-title">คะแนนสุขภาพฟาร์ม</h3>
                         <div class="health-score-layout">
                             <div class="health-score-circle">
                                 <span class="health-number">82</span>
                                 <span class="health-total">/ 100</span>
                             </div>
                             <div class="health-info">
-                                <h4 class="health-status">Excellent Condition</h4>
-                                <p class="health-explain">Soil moisture and financial ratios are within ideal parameters. Increase composting to further improve next month's score.</p>
+                                <h4 class="health-status">อยู่ในเกณฑ์ดีเยี่ยม</h4>
+                                <p class="health-explain">ความชื้นในดินและอัตราส่วนทางการเงินอยู่ในเกณฑ์ที่เหมาะสม แนะนำให้เพิ่มปุ๋ยหมักเพื่อปรับปรุงคะแนนในเดือนถัดไป</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- SECTION 5: Season Timeline -->
                     <div class="premium-card">
-                        <h3 class="section-title">Season Timeline</h3>
+                        <h3 class="section-title">ปฏิทินฤดูกาลเกษตร</h3>
                         <div class="timeline-scroll">
                             <div class="timeline-month">
-                                <div class="month-name">Jan</div>
-                                <div class="month-stage">Prepare</div>
+                                <div class="month-name">ม.ค.</div>
+                                <div class="month-stage">เตรียมดิน</div>
                             </div>
                             <div class="timeline-month">
-                                <div class="month-name">Feb</div>
-                                <div class="month-stage">Plant</div>
+                                <div class="month-name">ก.พ.</div>
+                                <div class="month-stage">เพาะปลูก</div>
                             </div>
                             <div class="timeline-month">
-                                <div class="month-name">Mar</div>
-                                <div class="month-stage">Water</div>
+                                <div class="month-name">มี.ค.</div>
+                                <div class="month-stage">รดน้ำ</div>
                             </div>
                             <div class="timeline-month">
-                                <div class="month-name">Apr</div>
-                                <div class="month-stage">Fertilize</div>
+                                <div class="month-name">เม.ย.</div>
+                                <div class="month-stage">ใส่ปุ๋ย</div>
                             </div>
                             <div class="timeline-month">
-                                <div class="month-name">May</div>
-                                <div class="month-stage">Water</div>
+                                <div class="month-name">พ.ค.</div>
+                                <div class="month-stage">รดน้ำ</div>
                             </div>
                             <div class="timeline-month">
-                                <div class="month-name">Jun</div>
-                                <div class="month-stage">Harvest</div>
+                                <div class="month-name">มิ.ย.</div>
+                                <div class="month-stage">เก็บเกี่ยว</div>
                             </div>
                             <div class="timeline-month active">
-                                <div class="month-name">Jul</div>
-                                <div class="month-stage">Prepare</div>
+                                <div class="month-name">ก.ค.</div>
+                                <div class="month-stage">เตรียมดิน</div>
                             </div>
                             <div class="timeline-month">
-                                <div class="month-name">Aug</div>
-                                <div class="month-stage">Plant</div>
+                                <div class="month-name">ส.ค.</div>
+                                <div class="month-stage">เพาะปลูก</div>
                             </div>
                             <div class="timeline-month">
-                                <div class="month-name">Sep</div>
-                                <div class="month-stage">Fertilize</div>
+                                <div class="month-name">ก.ย.</div>
+                                <div class="month-stage">ใส่ปุ๋ย</div>
                             </div>
                             <div class="timeline-month">
-                                <div class="month-name">Oct</div>
-                                <div class="month-stage">Water</div>
+                                <div class="month-name">ต.ค.</div>
+                                <div class="month-stage">รดน้ำ</div>
                             </div>
                             <div class="timeline-month">
-                                <div class="month-name">Nov</div>
-                                <div class="month-stage">Harvest</div>
+                                <div class="month-name">พ.ย.</div>
+                                <div class="month-stage">เก็บเกี่ยว</div>
                             </div>
                             <div class="timeline-month">
-                                <div class="month-name">Dec</div>
-                                <div class="month-stage">Rest</div>
+                                <div class="month-name">ธ.ค.</div>
+                                <div class="month-stage">พักดิน</div>
                             </div>
                         </div>
                     </div>
 
                     <!-- SECTION 6: Smart Recommendations -->
                     <div class="premium-card">
-                        <h3 class="section-title">Smart Actions</h3>
+                        <h3 class="section-title">คำแนะนำที่ควรจัดการ</h3>
                         <div class="rec-list">
                             <div class="rec-item">
                                 <div class="rec-icon-wrapper">📦</div>
                                 <div class="rec-body">
                                     <div class="rec-header">
-                                        <span class="rec-title">Reduce Feed Cost</span>
-                                        <span class="rec-priority high">High</span>
+                                        <span class="rec-title">ลดต้นทุนค่าอาหารสัตว์</span>
+                                        <span class="rec-priority high">ด่วนที่สุด</span>
                                     </div>
-                                    <p class="rec-reason">Feed costs rose 18% this month. Negotiate batch options.</p>
-                                    <button class="rec-action-btn">Compare Suppliers</button>
+                                    <p class="rec-reason">ราคาอาหารสัตว์เพิ่มขึ้น 18% ในเดือนนี้ แนะนำให้เจรจาซื้อล็อตใหญ่ร่วมกับกลุ่มเกษตรกร</p>
+                                    <button class="rec-action-btn">เปรียบเทียบซัพพลายเออร์</button>
                                 </div>
                             </div>
                             <div class="rec-item">
                                 <div class="rec-icon-wrapper">💉</div>
                                 <div class="rec-body">
                                     <div class="rec-header">
-                                        <span class="rec-title">Prepare Livestock Vaccines</span>
-                                        <span class="rec-priority high">High</span>
+                                        <span class="rec-title">เตรียมวัคซีนสำหรับปศุสัตว์</span>
+                                        <span class="rec-priority high">ด่วนที่สุด</span>
                                     </div>
-                                    <p class="rec-reason">Seasonal wet climate coming up raises disease vulnerability.</p>
-                                    <button class="rec-action-btn">Schedule Vet Visit</button>
+                                    <p class="rec-reason">ความชื้นที่มากับฤดูฝนอาจทำให้เกิดการระบาดของโรคได้ง่ายขึ้น</p>
+                                    <button class="rec-action-btn">นัดหมายสัตวแพทย์</button>
                                 </div>
                             </div>
                             <div class="rec-item">
                                 <div class="rec-icon-wrapper">🚛</div>
                                 <div class="rec-body">
                                     <div class="rec-header">
-                                        <span class="rec-title">Expand Distribution Channels</span>
-                                        <span class="rec-priority normal">Normal</span>
+                                        <span class="rec-title">เพิ่มช่องทางการจัดจำหน่าย</span>
+                                        <span class="rec-priority normal">ปกติ</span>
                                     </div>
-                                    <p class="rec-reason">Harvest projections look 15% higher than previous seasons.</p>
-                                    <button class="rec-action-btn">Explore B2B Portals</button>
+                                    <p class="rec-reason">ผลผลิตที่คาดว่าจะเก็บเกี่ยวได้สูงขึ้นกว่าฤดูกาลที่แล้วถึง 15%</p>
+                                    <button class="rec-action-btn">หาคู่ค้า B2B เพิ่มเติม</button>
                                 </div>
                             </div>
                         </div>
@@ -900,7 +903,7 @@ function renderDashboardPage(liffId) {
 
                     <!-- SECTION 7: Cash Flow -->
                     <div class="premium-card">
-                        <h3 class="section-title">Cash Flow & Daily Trends</h3>
+                        <h3 class="section-title">กระแสเงินสดและแนวโน้มรายวัน</h3>
                         <div class="chart-container">
                             <canvas id="dailyChart" style="max-height: 160px;"></canvas>
                         </div>
@@ -908,34 +911,34 @@ function renderDashboardPage(liffId) {
 
                     <!-- SECTION 8: Expense Analysis -->
                     <div class="premium-card">
-                        <h3 class="section-title">Expense Analysis</h3>
+                        <h3 class="section-title">วิเคราะห์สัดส่วนรายจ่าย</h3>
                         <div id="categoryChartWrap">
                             <div class="category-canvas-wrap" style="display: none;">
                                 <canvas id="categoryChart"></canvas>
                             </div>
-                            <!-- Dynamic Horizontal Bar-chart rendering to replace raw doughnut style UI -->
+                            <!-- จัดเรียงจากมากไปน้อยเป็นร้อยละตามแผนงานทดแทนพายชาร์ต -->
                             <div class="horizontal-bar-list" id="customExpenseBarChart">
-                                <div class="chart-placeholder">Calculating expenses...</div>
+                                <div class="chart-placeholder">กำลังคำนวณและจัดอันดับรายจ่าย...</div>
                             </div>
                         </div>
                     </div>
 
                     <!-- SECTION 9: Top Cost Driver -->
                     <div class="premium-card">
-                        <h3 class="section-title">Top Cost Driver</h3>
+                        <h3 class="section-title">ต้นทุนหลักประจำเดือน</h3>
                         <div class="driver-layout">
-                            <span class="driver-name" id="topDriverLabel">Animal Feed</span>
+                            <span class="driver-name" id="topDriverLabel">อาหารสัตว์</span>
                             <div class="driver-val-wrap">
                                 <div class="driver-amount" id="topDriverAmount">18,400 บาท</div>
-                                <div class="driver-percent" id="topDriverPercent">22% of total expenses</div>
+                                <div class="driver-percent" id="topDriverPercent">22% ของรายจ่ายทั้งหมด</div>
                             </div>
                         </div>
-                        <p class="driver-suggestion">💡 Feed formulations bought early next week save up to 4,200 บาท based on forecasted feed cost decreases.</p>
+                        <p class="driver-suggestion">💡 ซื้อสูตรอาหารสัตว์กักตุนไว้ภายในต้นสัปดาห์หน้า จะช่วยประหยัดต้นทุนได้ถึง 4,200 บาทตามดัชนีราคาตลาดที่คาดการณ์</p>
                     </div>
 
                     <!-- SECTION 10: Profit Trend -->
                     <div class="premium-card">
-                        <h3 class="section-title">Monthly Comparison</h3>
+                        <h3 class="section-title">เปรียบเทียบผลประกอบการรายเดือน</h3>
                         <div class="chart-container">
                             <canvas id="monthlyChart" style="max-height: 180px;"></canvas>
                         </div>
@@ -943,7 +946,7 @@ function renderDashboardPage(liffId) {
 
                     <!-- SECTION 11: Recent Transactions -->
                     <div class="premium-card" style="margin-bottom: 0;">
-                        <h3 class="section-title">Recent Transactions</h3>
+                        <h3 class="section-title">รายการบันทึกล่าสุด</h3>
                         <div class="transaction-list" id="recentTableBody">
                             <div class="chart-placeholder">กำลังโหลดข้อมูล...</div>
                         </div>
@@ -957,8 +960,8 @@ function renderDashboardPage(liffId) {
                     let categoryChart = null;
                     let monthlyChart = null;
 
-                    // Set present date elegantly
-                    document.getElementById('currentDateDisplay').textContent = new Date().toLocaleDateString('en-US', {
+                    // แสดงวันที่ภาษาไทยอัตโนมัติให้เข้ากับทศวรรษปัจจุบัน
+                    document.getElementById('currentDateDisplay').textContent = new Date().toLocaleDateString('th-TH', {
                         month: 'long',
                         year: 'numeric'
                     });
@@ -993,7 +996,6 @@ function renderDashboardPage(liffId) {
                     }
 
                     function resetCategoryCanvas() {
-                        // Empty out list container. Actual hidden chart component persists for standard API compatibility
                         document.getElementById('customExpenseBarChart').innerHTML = '';
                     }
 
@@ -1005,12 +1007,12 @@ function renderDashboardPage(liffId) {
                         return res.json();
                     }
 
-                    // Redesign: HTML structures transformed into highly functional touch-friendly list components
+                    // ปรับแต่งการ์ดรายการล่าสุดให้เป็นปุ่มกดและแสดงผลแบบ Mobile-friendly
                     function renderRecentTable(items) {
                         const tbody = document.getElementById('recentTableBody');
 
                         if (!items || items.length === 0) {
-                            tbody.innerHTML = '<div class="chart-placeholder">ยังไม่มีรายการช่วงนี้</div>';
+                            tbody.innerHTML = '<div class="chart-placeholder">ยังไม่มีรายการบันทึกในช่วงเวลานี้</div>';
                             return;
                         }
 
@@ -1045,7 +1047,7 @@ function renderDashboardPage(liffId) {
                         const tbody = document.getElementById('recentTableBody');
 
                         try {
-                            tbody.innerHTML = '<div class="chart-placeholder">กำลังโหลด...</div>';
+                            tbody.innerHTML = '<div class="chart-placeholder">กำลังโหลดข้อมูลฟาร์มของคุณ...</div>';
 
                             const data = await fetchJson(
                                 '/api/recent?userId=' + encodeURIComponent(currentUserId) + '&limit=20'
@@ -1103,7 +1105,7 @@ function renderDashboardPage(liffId) {
                             renderCategoryChart(items);
                         } catch (error) {
                             console.error('loadCategorySummary error:', error);
-                            setCategoryEmptyState('โหลดสรุปตามหมวดหมู่ไม่สำเร็จ');
+                            setCategoryEmptyState('โหลดข้อมูลหมวดหมู่ไม่สำเร็จ');
                         }
                     }
 
@@ -1120,7 +1122,7 @@ function renderDashboardPage(liffId) {
                     }
 
                     async function resetTodayData() {
-                        const confirmed = window.confirm('ต้องการลบข้อมูลของ "วันนี้" ทั้งหมดใช่หรือไม่?');
+                        const confirmed = window.confirm('ต้องการลบข้อมูลของ "วันนี้" ทั้งหมดใช่หรือไม่? ทำแล้วไม่สามารถย้อนกลับได้');
                         if (!confirmed) {
                             return;
                         }
@@ -1143,7 +1145,7 @@ function renderDashboardPage(liffId) {
                             const data = await res.json();
                     
                             showActionMessage(
-                                'รีเซ็ตข้อมูลวันนี้สำเร็จ (' + Number(data.deletedCount || 0) + ' รายการ)',
+                                'รีเซ็ตข้อมูลวันนี้สำเร็จ เรียบร้อยแล้ว (' + Number(data.deletedCount || 0) + ' รายการ)',
                                 false
                             );
                     
@@ -1157,7 +1159,6 @@ function renderDashboardPage(liffId) {
                         }
                     }
 
-                    // Minimal aesthetic custom line charts
                     function renderMonthlyChart(items) {
                         const canvas = document.getElementById('monthlyChart');
                         if (!canvas) return;
@@ -1215,10 +1216,10 @@ function renderDashboardPage(liffId) {
                         });
                     }
 
-                    // Render gorgeous Horizontal Bar list + Hidden Pie canvas integration to remain compliant with background code.
+                    // ประกอบข้อมูลแท่งรายจ่ายตามหมวดหมู่โดยไม่ใช้ Pie Chart เพื่อความชัดเจนในการประเมินสัดส่วน
                     function renderCategoryChart(items) {
                         if (!items || items.length === 0) {
-                            setCategoryEmptyState('ยังไม่มีข้อมูลหมวดหมู่สำหรับวันนี้');
+                            setCategoryEmptyState('ยังไม่มีข้อมูลรายจ่ายหมวดหมู่สำหรับวันนี้');
                             return;
                         }
 
@@ -1231,19 +1232,18 @@ function renderDashboardPage(liffId) {
 
                         resetCategoryCanvas();
 
-                        // Update Top Cost Driver UI using real data if available
                         const sortedExpenses = [...expenseItems].sort((a, b) => Number(b.total || 0) - Number(a.total || 0));
                         const mainDriver = sortedExpenses[0];
                         const totalExpenseSum = sortedExpenses.reduce((acc, curr) => acc + Number(curr.total || 0), 0);
 
+                        // ปรับปรุงการ์ดข้อมูลพระเอกต้นทุนหลัก (Section 9) ทันทีที่มีข้อมูลอัปเดตเข้ามา
                         if (mainDriver) {
                             const pct = Math.round((Number(mainDriver.total) / totalExpenseSum) * 100) || 0;
                             document.getElementById('topDriverLabel').textContent = mainDriver.category || 'อื่นๆ';
                             document.getElementById('topDriverAmount').textContent = formatCurrency(mainDriver.total);
-                            document.getElementById('topDriverPercent').textContent = pct + '% ของค่าใช้จ่ายทั้งหมด';
+                            document.getElementById('topDriverPercent').textContent = pct + '% ของรายจ่ายทั้งหมด';
                         }
 
-                        // Generate beautiful production style horizontal progress bar components
                         const barListContainer = document.getElementById('customExpenseBarChart');
                         barListContainer.innerHTML = sortedExpenses.map((exp, idx) => {
                             const calculatedPct = Math.round((Number(exp.total) / totalExpenseSum) * 100) || 0;
@@ -1263,7 +1263,7 @@ function renderDashboardPage(liffId) {
                             \`;
                         }).join('');
 
-                        // Dummy instantiation to comply with external Chart variables
+                        // เก็บโครงสร้าง Component เดิมไว้เพื่อให้การเรียกทำลาย Object ชาร์ตเดิมทำงานได้อย่างลื่นไหล
                         const canvas = document.getElementById('categoryChart');
                         if (categoryChart) {
                             categoryChart.destroy();
@@ -1345,13 +1345,12 @@ function renderDashboardPage(liffId) {
                             currentUserId = context && context.userId ? context.userId : null;
 
                             if (!currentUserId) {
-                                document.getElementById('userText').textContent = 'ไม่พบ userId จาก LIFF';
+                                document.getElementById('userText').textContent = 'ไม่พบข้อมูลผู้ใช้งานจาก LINE';
                                 return;
                             }
 
-                            document.getElementById('userText').textContent = 'userId: ' + currentUserId;
+                            document.getElementById('userText').textContent = 'รหัสผู้ใช้: ' + currentUserId;
                             
-                            // Customize user avatar letter based on identity
                             if (currentUserId && currentUserId.length > 0) {
                                 document.getElementById('avatarLetter').textContent = currentUserId.substring(0, 1).toUpperCase();
                             }
@@ -1362,7 +1361,7 @@ function renderDashboardPage(liffId) {
                             await loadMonthlySummary();
                         } catch (error) {
                             console.error('initDashboard error:', error);
-                            document.getElementById('userText').textContent = 'โหลด LIFF ไม่สำเร็จ';
+                            document.getElementById('userText').textContent = 'การเชื่อมต่อระบบ LINE ขัดข้อง';
                         }
                     }
 
