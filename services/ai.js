@@ -156,12 +156,16 @@ async function generateAIInsight(userId) {
         const prompt = buildPrompt(data);
         return await callAIInsight(prompt);
     } catch (error) {
-        console.error('❌ AI insight error:', {
-            message: error.message,
-            status: error.status,
-            code: error.code,
-            type: error.type
-        });
+        console.error("========== FULL AI ERROR ==========");
+        console.dir(error, { depth: null });
+        
+        if (error.response) {
+            console.log("Status:", error.response.status);
+            console.log("Headers:", error.response.headers);
+            console.log("Body:", error.response.data);
+        }
+        
+        console.error("==================================");
 
         if (error.message === 'NO_API_KEY') {
             return '⚠️ ระบบวิเคราะห์ยังไม่พร้อมใช้งานในตอนนี้\nกรุณาลองใหม่ภายหลัง';
