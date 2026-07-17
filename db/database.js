@@ -1,4 +1,11 @@
-﻿const Database = require('better-sqlite3');
+﻿const { Pool } = require("pg");
+
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl:{
+        rejectUnauthorized:false
+    }
+});
 const path = require('path');
 
 const dbPath = path.join(__dirname, 'finance.db');
