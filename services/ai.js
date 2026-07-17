@@ -1,4 +1,4 @@
-const OpenAI = require('openai');
+const { GoogleGenAI } = require("@google/genai");
 const {
     getTodaySummary,
     getRecentTransactions,
@@ -6,21 +6,20 @@ const {
     getDailySummary
 } = require('../db/database');
 
-let client = null;
+let aiInstance = null;
 
-function getAIClient() {
-    if (!process.env.DASHSCOPE_API_KEY) {
+function getGeminiClient() {
+    if (!process.env.GEMINI_API_KEY) {
         return null;
     }
 
-    if (!client) {
-        client = new OpenAI({
-            apiKey: process.env.DASHSCOPE_API_KEY,
-            baseURL: process.env.DASHSCOPE_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+    if (!aiInstance) {
+        aiInstance = new GoogleGenAI({
+            apiKey: process.env.GEMINI_API_KEY
         });
     }
 
-    return client;
+    return aiInstance;
 }
 
 async function buildInsightData(userId) {
@@ -116,32 +115,25 @@ ${recentText}
 `.trim();
 }
 
-async function callAIInsight(prompt) {
-    const client = getAIClient();
+async function callGeminiInsight(prompt) {
+    const ai = getGeminiClient();
 
-    if (!client) {
+    if (!ai) {
         throw new Error('NO_API_KEY');
     }
 
-    const model = process.env.AI_MODEL || 'qwen-plus';
+    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
-    const response = await client.chat.completions.create({
+    const response = await ai.models.generateContent({
         model,
-        messages: [
-            {
-                role: 'user',
-                content: prompt
-            }
-        ],
-        temperature: 0.7,
-        max_tokens: 600
+        contents: prompt
     });
 
-    return response.choices[0]?.message?.content?.trim() || '⚠️ ไม่สามารถสร้างคำวิเคราะห์ได้ในขณะนี้';
+    return response.text?.trim() || '⚠️ ไม่สามารถสร้างคำวิเคราะห์ได้ในขณะนี้';
 }
 
 async function generateAIInsight(userId) {
-    if (!process.env.DASHSCOPE_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
         return '⚠️ ระบบวิเคราะห์ยังไม่พร้อมใช้งานในตอนนี้\nกรุณาลองใหม่ภายหลัง';
     }
 
@@ -154,21 +146,29 @@ async function generateAIInsight(userId) {
         }
 
         const prompt = buildPrompt(data);
-        return await callAIInsight(prompt);
+        return await callGeminiInsight(prompt);
     } catch (error) {
-        console.error("========== FULL AI ERROR ==========");
-        console.dir(error, { depth: null });
-        
-        if (error.response) {
-            console.log("Status:", error.response.status);
-            console.log("Headers:", error.response.headers);
-            console.log("Body:", error.response.data);
-        }
-        
-        console.error("==================================");
+        console.error('❌ Gemini insight error:', {
+            status: error.status || null,
+            code: error.code || null,
+            message: error.message,
+            details: error.details || null
+        });
 
         if (error.message === 'NO_API_KEY') {
             return '⚠️ ระบบวิเคราะห์ยังไม่พร้อมใช้งานในตอนนี้\nกรุณาลองใหม่ภายหลัง';
+        }
+
+        const statusCode = error.status || error.code;
+        
+        // Check for common Quota Exceeded conditions (HTTP 429 / RESOURCE_EXHAUSTED)
+        if (statusCode === 429 || statusCode === 'RESOURCE_EXHAUSTED' || (error.message && error.message.includes('quota'))) {
+            return '⚠️ วันนี้ระบบ AI ถูกใช้งานครบโควตาแล้ว\nกรุณาลองใหม่ภายหลัง';
+        }
+
+        // Check for common Authentication conditions (HTTP 401 / 403 / API_KEY_INVALID)
+        if (statusCode === 401 || statusCode === 403 || statusCode === 'API_KEY_INVALID' || (error.message && error.message.includes('API key'))) {
+            return '⚠️ ระบบ AI ตั้งค่าไม่ถูกต้อง';
         }
 
         return '⚠️ ตอนนี้ระบบวิเคราะห์ยังไม่พร้อมใช้งาน\nคุณยังสามารถบันทึกข้อมูลและดูสรุปได้ตามปกติ';
