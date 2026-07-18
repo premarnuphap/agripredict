@@ -21,6 +21,16 @@ async function initDb() {
             createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
     `);
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS user_profile (
+            user_id TEXT PRIMARY KEY,
+            province TEXT,
+            farm_type TEXT,
+            registration_step TEXT DEFAULT 'province',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
 
     await pool.query(`
         CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_message_dedup
@@ -348,15 +358,24 @@ async function getRegistrationStep(userId) {
     );
 
     if (result.rows.length === 0) {
-        return null;
+        return "province";
     }
-
-    return result.rows[0].registration_step;
+    
+    return result.rows[0].registration_step || "province";
 }
 async function saveProvince(userId, province) {
   await pool.query(
     `
-    INSERT INTO user_profile (user_id, province)
+    INSERT INTO user_profile (
+    user_id,
+    province,
+    registration_step
+    )
+    VALUES (
+    $1,
+    $2,
+    'farm_type'
+    )
     VALUES ($1,$2)
 
     ON CONFLICT (user_id)
@@ -365,6 +384,7 @@ async function saveProvince(userId, province) {
 
     SET
         province = EXCLUDED.province,
+        registration_step = 'farm_type',
         updated_at = CURRENT_TIMESTAMP
     `,
     [userId, province]
@@ -378,6 +398,7 @@ async function saveFarmType(userId, farmType) {
 
     SET
         farm_type = $2,
+        registration_step = 'completed',
         updated_at = CURRENT_TIMESTAMP
 
     WHERE user_id = $1
