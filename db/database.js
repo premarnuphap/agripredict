@@ -318,6 +318,64 @@ function formatDateOnly(value) {
     return String(value).slice(0, 10);
 }
 
+async function getUserProfile(userId) {
+  const result = await pool.query(
+    `SELECT * FROM user_profile WHERE user_id = $1`,
+    [userId]
+  );
+
+  return result.rows[0] || null;
+}
+async function saveProvince(userId, province) {
+  await pool.query(
+    `
+    INSERT INTO user_profile (user_id, province)
+    VALUES ($1,$2)
+
+    ON CONFLICT (user_id)
+
+    DO UPDATE
+
+    SET
+        province = EXCLUDED.province,
+        updated_at = CURRENT_TIMESTAMP
+    `,
+    [userId, province]
+  );
+}
+
+async function saveFarmType(userId, farmType) {
+  await pool.query(
+    `
+    UPDATE user_profile
+
+    SET
+        farm_type = $2,
+        updated_at = CURRENT_TIMESTAMP
+
+    WHERE user_id = $1
+    `,
+    [userId, farmType]
+  );
+}
+async function isProfileCompleted(userId) {
+  const result = await pool.query(
+    `
+    SELECT province, farm_type
+
+    FROM user_profile
+
+    WHERE user_id = $1
+    `,
+    [userId]
+  );
+
+  if (result.rows.length === 0) return false;
+
+  const user = result.rows[0];
+
+  return !!(user.province && user.farm_type);
+}
 module.exports = {
     pool,
     dbReady,
@@ -328,5 +386,9 @@ module.exports = {
     getMonthlySummary,
     deleteTodayTransactionsByUser,
     canUseAI,
-    saveTransaction
+    saveTransaction,
+    getUserProfile,
+    saveProvince,
+    saveFarmType,
+    isProfileCompleted
 };
