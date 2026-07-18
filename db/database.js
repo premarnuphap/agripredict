@@ -199,7 +199,55 @@ async function deleteTodayTransactionsByUser(userId) {
         deletedCount: result.rowCount || 0
     };
 }
+async function canUseAI(userId) {
 
+    const today = new Date().toISOString().slice(0,10);
+
+    const result = await pool.query(
+        `
+        SELECT usedCount
+        FROM ai_usage
+        WHERE userId=$1
+        AND usageDate=$2
+        `,
+        [userId, today]
+    );
+
+    if(result.rows.length===0){
+
+        await pool.query(
+            `
+            INSERT INTO ai_usage(userId,usageDate,usedCount)
+            VALUES($1,$2,1)
+            `,
+            [userId,today]
+        );
+
+        return true;
+
+    }
+
+    const used=result.rows[0].usedcount;
+
+    if(used>=3){
+
+        return false;
+
+    }
+
+    await pool.query(
+        `
+        UPDATE ai_usage
+        SET usedCount=usedCount+1
+        WHERE userId=$1
+        AND usageDate=$2
+        `,
+        [userId,today]
+    );
+
+    return true;
+
+}
 // บันทึกรายการ
 async function saveTransaction(userId, tx, sourceMessageId, sourceTxnIndex) {
     await dbReady;
@@ -274,5 +322,6 @@ module.exports = {
     getDailySummary,
     getMonthlySummary,
     deleteTodayTransactionsByUser,
+    canUseAI,
     saveTransaction
 };
