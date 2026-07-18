@@ -326,6 +326,33 @@ async function getUserProfile(userId) {
 
   return result.rows[0] || null;
 }
+async function setRegistrationStep(userId, step) {
+    await pool.query(
+        `
+        UPDATE user_profile
+        SET registration_step = $2,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = $1
+        `,
+        [userId, step]
+    );
+}
+async function getRegistrationStep(userId) {
+    const result = await pool.query(
+        `
+        SELECT registration_step
+        FROM user_profile
+        WHERE user_id = $1
+        `,
+        [userId]
+    );
+
+    if (result.rows.length === 0) {
+        return null;
+    }
+
+    return result.rows[0].registration_step;
+}
 async function saveProvince(userId, province) {
   await pool.query(
     `
@@ -390,5 +417,7 @@ module.exports = {
     getUserProfile,
     saveProvince,
     saveFarmType,
-    isProfileCompleted
+    isProfileCompleted,
+    getRegistrationStep,
+    setRegistrationStep
 };
