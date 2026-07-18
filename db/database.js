@@ -1,3 +1,5 @@
+// db/database.js
+
 const { Pool } = require("pg");
 
 const pool = new Pool({
@@ -7,103 +9,77 @@ const pool = new Pool({
     }
 });
 
-/**
- * Connects to PostgreSQL with a basic retry mechanism to withstand 
- * Render cold starts/database spin-ups.
- */
-async function connectWithRetry(retries = 5, delay = 5000) {
-    for (let i = 0; i < retries; i++) {
-        try {
-            const res = await pool.query('SELECT NOW()');
-            console.log(`✅ Connected to PostgreSQL database at ${res.rows[0].now}`);
-            return;
-        } catch (err) {
-            console.error(`❌ Connection attempt ${i + 1} failed: ${err.message}`);
-            if (i < retries - 1) {
-                console.log(`Retrying in ${delay / 1000} seconds...`);
-                await new Promise(res => setTimeout(res, delay));
-            } else {
-                throw new Error('Could not establish database connection. Max retries reached.');
-            }
-        }
-    }
-}
-
-/**
- * Automatically initializes production schema and indexes sequentially.
- */
 async function initDb() {
-    try {
-        await connectWithRetry();
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS transactions (
+            id SERIAL PRIMARY KEY,
+            userId TEXT NOT NULL,
+            type TEXT NOT NULL,
+            amount NUMERIC NOT NULL,
+            category TEXT,
+            note TEXT,
+            sourceMessageId TEXT,
+            sourceTxnIndex INTEGER,
+            createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
 
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS transactions (
-                id SERIAL PRIMARY KEY,
-                "userId" TEXT NOT NULL,
-                type TEXT NOT NULL,
-                amount NUMERIC NOT NULL,
-                category TEXT,
-                note TEXT,
-                "sourceMessageId" TEXT,
-                "sourceTxnIndex" INTEGER,
-                "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
+    await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_message_dedup
+        ON transactions (sourceMessageId, sourceTxnIndex)
+    `);
 
-        await pool.query(`
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_message_dedup
-            ON transactions ("sourceMessageId", "sourceTxnIndex")
-        `);
-        console.log('✅ PostgreSQL schema verified/initialized successfully');
-    } catch (err) {
-        console.error('❌ Failed to initialize PostgreSQL schema:', err);
-        throw err;
-    }
+    console.log('✅ Connected to PostgreSQL database and ensured schema');
 }
+
+const dbReady = initDb().catch((error) => {
+    console.error('❌ Failed to initialize PostgreSQL schema:', error);
+    process.exit(1);
+});
 
 // =====================
 // ANALYTICS HELPERS
 // =====================
 
+// รายการล่าสุด
 async function getRecentTransactions(userId, limit = 20) {
-    const query = `
-        SELECT id, "userId", type, amount, category, note, "sourceMessageId", "sourceTxnIndex", "createdAt"
+    await dbReady;
+
+    const result = await pool.query(
+        `
+        SELECT id, userId, type, amount, category, note, sourceMessageId, sourceTxnIndex, createdAt
         FROM transactions
-        WHERE "userId" = $1
-        ORDER BY "createdAt" DESC, id DESC
+        WHERE userId = $1
+        ORDER BY createdAt DESC, id DESC
         LIMIT $2
-    `;
-    const res = await pool.query(query, [userId, limit]);
-    
-    return res.rows.map(row => ({
-        id: row.id,
-        userId: row.userId,
-        type: row.type,
-        amount: parseFloat(row.amount),
-        category: row.category,
-        note: row.note,
-        sourceMessageId: row.sourceMessageId,
-        sourceTxnIndex: row.sourceTxnIndex,
-        createdAt: row.createdAt
-    }));
+        `,
+        [userId, limit]
+    );
+
+    return result.rows;
 }
 
+// summary วันนี้
 async function getTodaySummary(userId) {
-    const query = `
+    await dbReady;
+
+    const result = await pool.query(
+        `
         SELECT type, SUM(amount) as total
         FROM transactions
-        WHERE "userId" = $1
-          AND ("createdAt" AT TIME ZONE 'Asia/Bangkok')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date
+        WHERE userId = $1
+          AND (createdAt AT TIME ZONE 'Asia/Bangkok')::date = (NOW() AT TIME ZONE 'Asia/Bangkok')::date
         GROUP BY type
-    `;
-    const res = await pool.query(query, [userId]);
+        `,
+        [userId]
+    );
 
     let income = 0;
     let expense = 0;
 
-    res.rows.forEach(row => {
-        if (row.type === 'income') income = parseFloat(row.total) || 0;
-        if (row.type === 'expense') expense = parseFloat(row.total) || 0;
+    result.rows.forEach(row => {
+        if (row.type === 'income') income = Number(row.total) || 0;
+        if (row.type === 'expense') expense = Number(row.total) || 0;
     });
 
     return {
@@ -113,96 +89,192 @@ async function getTodaySummary(userId) {
     };
 }
 
+// สรุปตามหมวดหมู่ของวันนี้
 async function getTodayCategorySummary(userId) {
-    const query = `
+    await dbReady;
+
+    const result = await pool.query(
+        `
         SELECT
             category,
             type,
-            COUNT(*)::int as count,
+            COUNT(*) as count,
             SUM(amount) as total
         FROM transactions
-        WHERE "userId" = $1
-          AND ("createdAt" AT TIME ZONE 'Asia/Bangkok')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date
+        WHERE userId = $1
+          AND (createdAt AT TIME ZONE 'Asia/Bangkok')::date = (NOW() AT TIME ZONE 'Asia/Bangkok')::date
         GROUP BY category, type
         ORDER BY total DESC
-    `;
-    const res = await pool.query(query, [userId]);
-    return res.rows.map(row => ({
+        `,
+        [userId]
+    );
+
+    return result.rows.map(row => ({
         category: row.category,
         type: row.type,
-        count: row.count,
-        total: parseFloat(row.total)
+        count: Number(row.count) || 0,
+        total: Number(row.total) || 0
     }));
 }
 
+// สรุปรายวันย้อนหลัง
 async function getDailySummary(userId, limitDays = 7) {
-    const query = `
+    await dbReady;
+
+    const result = await pool.query(
+        `
         SELECT
-            TO_CHAR("createdAt" AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD') as date,
+            (createdAt AT TIME ZONE 'Asia/Bangkok')::date as date,
             SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
             SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense
         FROM transactions
-        WHERE "userId" = $1
-        GROUP BY TO_CHAR("createdAt" AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD')
+        WHERE userId = $1
+        GROUP BY (createdAt AT TIME ZONE 'Asia/Bangkok')::date
         ORDER BY date DESC
         LIMIT $2
-    `;
-    const res = await pool.query(query, [userId, limitDays]);
+        `,
+        [userId, limitDays]
+    );
 
-    return res.rows.map(row => ({
-        date: row.date,
-        income: parseFloat(row.income) || 0,
-        expense: parseFloat(row.expense) || 0,
-        balance: (parseFloat(row.income) || 0) - (parseFloat(row.expense) || 0)
-    }));
+    return result.rows.map(row => {
+        const income = Number(row.income) || 0;
+        const expense = Number(row.expense) || 0;
+
+        return {
+            date: formatDateOnly(row.date),
+            income,
+            expense,
+            balance: income - expense
+        };
+    });
 }
 
+// สรุปรายเดือนย้อนหลัง
 async function getMonthlySummary(userId, limitMonths = 6) {
-    const query = `
-        SELECT *
-        FROM (
+    await dbReady;
+
+    const result = await pool.query(
+        `
+        SELECT * FROM (
             SELECT
-                TO_CHAR("createdAt" AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM') as month,
+                to_char(createdAt AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM') as month,
                 SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
                 SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense
             FROM transactions
-            WHERE "userId" = $1
-            GROUP BY TO_CHAR("createdAt" AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM')
+            WHERE userId = $1
+            GROUP BY to_char(createdAt AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM')
             ORDER BY month DESC
             LIMIT $2
         ) sub
         ORDER BY month ASC
-    `;
-    const res = await pool.query(query, [userId, limitMonths]);
+        `,
+        [userId, limitMonths]
+    );
 
-    return res.rows.map(row => ({
-        month: row.month,
-        income: parseFloat(row.income) || 0,
-        expense: parseFloat(row.expense) || 0,
-        balance: (parseFloat(row.income) || 0) - (parseFloat(row.expense) || 0)
-    }));
+    return result.rows.map(row => {
+        const income = Number(row.income) || 0;
+        const expense = Number(row.expense) || 0;
+
+        return {
+            month: row.month,
+            income,
+            expense,
+            balance: income - expense
+        };
+    });
 }
 
+// ลบเฉพาะข้อมูลของ user ปัจจุบันใน "วันนี้"
 async function deleteTodayTransactionsByUser(userId) {
-    const query = `
+    await dbReady;
+
+    const result = await pool.query(
+        `
         DELETE FROM transactions
-        WHERE "userId" = $1
-          AND ("createdAt" AT TIME ZONE 'Asia/Bangkok')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date
-    `;
-    const res = await pool.query(query, [userId]);
+        WHERE userId = $1
+          AND (createdAt AT TIME ZONE 'Asia/Bangkok')::date = (NOW() AT TIME ZONE 'Asia/Bangkok')::date
+        `,
+        [userId]
+    );
 
     return {
-        deletedCount: res.rowCount || 0
+        deletedCount: result.rowCount || 0
     };
+}
+
+// บันทึกรายการ
+async function saveTransaction(userId, tx, sourceMessageId, sourceTxnIndex) {
+    await dbReady;
+
+    const { type, amount, category, note } = tx || {};
+
+    if (!userId || !type || !amount || amount <= 0) {
+        throw new Error('Invalid transaction data');
+    }
+
+    if (!sourceMessageId && sourceMessageId !== null) {
+        throw new Error('Missing sourceMessageId');
+    }
+
+    try {
+        const result = await pool.query(
+            `
+            INSERT INTO transactions (
+                userId,
+                type,
+                amount,
+                category,
+                note,
+                sourceMessageId,
+                sourceTxnIndex
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id
+            `,
+            [
+                userId,
+                type,
+                amount,
+                category,
+                note || 'ไม่ระบุ',
+                sourceMessageId,
+                sourceTxnIndex
+            ]
+        );
+
+        return {
+            id: result.rows[0].id,
+            changes: result.rowCount
+        };
+    } catch (error) {
+        if (error && error.code === '23505') {
+            throw new Error('UNIQUE constraint failed: transactions.sourceMessageId, transactions.sourceTxnIndex');
+        }
+        throw error;
+    }
+}
+
+function formatDateOnly(value) {
+    if (!value) return null;
+
+    if (value instanceof Date) {
+        const year = value.getFullYear();
+        const month = String(value.getMonth() + 1).padStart(2, '0');
+        const day = String(value.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    return String(value).slice(0, 10);
 }
 
 module.exports = {
     pool,
-    initDb,
+    dbReady,
     getRecentTransactions,
     getTodaySummary,
     getTodayCategorySummary,
     getDailySummary,
     getMonthlySummary,
-    deleteTodayTransactionsByUser
+    deleteTodayTransactionsByUser,
+    saveTransaction
 };
