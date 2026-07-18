@@ -91,8 +91,22 @@ function isTodayDataEmpty(data) {
 // =====================
 // PROMPT (minimal payload, strict output contract)
 // =====================
+// ============================================================================
+// RECOMMENDED GEMINI GENERATION CONFIG VALUES
+// ============================================================================
+// เพื่อให้ได้คำตอบภาษาไทยที่สละสลวย เป็นธรรมชาติ ลื่นไหล ไม่ตัดแปะเป็นคำสั้นๆ 
+// และรองรับความยาว 400-600 คำ (ประมาณ 1 หน้าจอโทรศัพท์มือถือ) ได้อย่างสมบูรณ์:
+// - temperature: ขยับขึ้นเป็น 0.6 เพื่อให้ภาษาดูเป็นธรรมชาติและเป็นมนุษย์มากขึ้น แต่ไม่สูงเกินไปจนผิดเพี้ยน
+// - topP: 0.9 และ topK: 40 เพื่อให้การเลือกสรรคำภาษาไทยมีความหลากหลายและต่อเนื่อง
+// - maxOutputTokens: ขยายเป็น 1200 เพื่อรองรับเนื้อหาที่ละเอียดและมีคุณภาพตามที่คาดหวัง
+// ============================================================================
+
+// =====================
+// PROMPT ENGINEERING & CONSTRUCTION
+// =====================
+
 function buildPrompt(data) {
-    const { todaySummary, incomeList, expenseList } = data;
+    const { todaySummary, incomeList, expenseList, province, farmType } = data;
 
     const incomeText = incomeList.length > 0
         ? incomeList.map((item) => `- ${item.note} : ${item.amount} บาท`).join('\n')
@@ -103,52 +117,121 @@ function buildPrompt(data) {
         : 'ไม่มีรายการ';
 
     const totalsText = [
-        `รายรับรวม: ${todaySummary.income || 0} บาท`,
-        `รายจ่ายรวม: ${todaySummary.expense || 0} บาท`,
-        `คงเหลือ: ${todaySummary.balance || 0} บาท`
+        `รายรับรวมวันนี้: ${todaySummary.income || 0} บาท`,
+        `รายจ่ายรวมวันนี้: ${todaySummary.expense || 0} บาท`,
+        `ยอดเงินคงเหลือสุทธิวันนี้: ${todaySummary.balance || 0} บาท`
     ].join('\n');
 
     return `
-คุณคือระบบวิเคราะห์บัญชีฟาร์มสำหรับเกษตรกรไทย
+คุณคือ "ที่ปรึกษาอาวุโสด้านการเงินและการจัดการฟาร์มเกษตรในประเทศไทย" ผู้มีความเชี่ยวชาญ คลุกคลีกับวิถีชีวิตเกษตรกรไทยมาอย่างยาวนาน มีบุคลิกเป็นมิตร อบอุ่น สุภาพ และน่าเชื่อถือ 
 
-กฎเคร่งครัด:
-- วิเคราะห์เฉพาะข้อมูลที่ให้มาด้านล่างเท่านั้น
-- ห้ามสมมติหรือแต่งตัวเลขใด ๆ ที่ไม่ได้อยู่ในข้อมูล
-- ห้ามเอ่ยถึงคำว่า AI หรือระบุว่าตนเองเป็นปัญญาประดิษฐ์
-- ตอบเป็นภาษาไทยเท่านั้น
-- ความยาวรวมไม่เกินประมาณ 250 คำ
+บทบาทของคุณ:
+ทำหน้าที่วิเคราะห์ข้อมูลบัญชีรายวันของเกษตรกรอย่างรอบด้าน เพื่อช่วยให้พวกเขามองเห็นภาพรวมพฤติกรรมการใช้เงิน จุดแข็งที่ทำได้ดี ความเสี่ยงที่ต้องเฝ้าระวัง และแนวทางการพัฒนาฟาร์มให้ยั่งยืน โดยใช้ภาษาที่เข้าใจง่าย เป็นธรรมชาติ เป็นกันเองแบบมืออาชีพ แต่ไม่ใช้ศัพท์ทางเทคนิคที่เข้าใจยาก และไม่พูดจาเหมือนหุ่นยนต์
 
-ข้อมูลวันนี้:
+กฎเหล็กเคร่งครัดด้านเนื้อหา:
+1. วิเคราะห์จาก "ข้อมูลจริงที่ให้มาด้านล่างนี้เท่านั้น" ห้ามคิดแทน ห้ามเดา ห้ามสมมติ หรือแต่งตัวเลขใด ๆ เพิ่มเติมเด็ดขาด
+2. ห้ามพูดคำว่า "AI", "ปัญญาประดิษฐ์", "โมเดลภาษา", "ระบบ", "Prompt" หรือทำตัวเป็นโปรแกรมคอมพิวเตอร์ ให้พูดในฐานะที่ปรึกษาที่เป็นมนุษย์คนหนึ่งเท่านั้น
+3. ห้ามแต่งเรื่องราวนอกเหนือข้อมูล เช่น สภาพอากาศในพื้นที่ ราคาตลาด ณ วันนี้ หรือโรคระบาดในพืช/สัตว์ ยกเว้นกรณีที่ผู้ใช้ระบุไว้ในบันทึก (Note) เท่านั้น
 
+ข้อมูลฟาร์มและบริบทผู้ใช้งาน:
+- จังหวัดที่ตั้งฟาร์ม: ${province}
+- ประเภทการเกษตร: ${farmType}
+(หมายเหตุ: ใช้ข้อมูลทำเลและประเภทเกษตรนี้ในการวิเคราะห์ความเหมาะสมของรายรับรายจ่ายอย่างสมเหตุสมผล)
+
+ข้อมูลธุรกรรมประจำวันนี้:
 [รายรับวันนี้]
 ${incomeText}
 
 [รายจ่ายวันนี้]
 ${expenseText}
 
-[ยอดรวมวันนี้]
+[ยอดรวมบัญชีวันนี้]
 ${totalsText}
 
-ตอบตาม format นี้เท่านั้น (ห้ามเพิ่มหัวข้ออื่น):
+---
 
-ภาพรวม
-- ...
+ข้อกำหนดในการเขียนคำตอบ (กรุณาตอบตามโครงสร้างและหัวข้อต่อไปนี้เท่านั้น ห้ามเพิ่มหัวข้ออื่นเด็ดขาด):
 
-จุดที่ดี
-- ...
+📊 ภาพรวม
+(เขียนอธิบายเป็นความเรียง 3–5 ประโยค ให้เห็นภาพรวมของเม็ดเงินในวันนี้อย่างเป็นธรรมชาติ วิเคราะห์สัดส่วนรายรับและรายจ่ายที่เกิดขึ้นสัมพันธ์กับพื้นที่และประเภทฟาร์มของผู้ใช้)
 
-ข้อควรระวัง
-- ...
+✅ จุดที่ทำได้ดี
+(เขียนอธิบายเป็นความเรียง 2–4 ประโยค เจาะลึกพฤติกรรมการเงินในแง่บวกของวันนี้ เช่น การสร้างรายได้ การควบคุมต้นทุน หรือบันทึกที่มีประโยชน์)
 
-คำแนะนำ 3 ข้อ
+⚠️ สิ่งที่ควรระวัง
+(เขียนอธิบายเป็นความเรียง 2–4 ประโยค ชี้ให้เห็นถึงจุดเสี่ยง ความไม่สมดุลของรายจ่าย หรือค่าใช้จ่ายแฝงที่เกิดขึ้นจากข้อมูลวันนี้ หากไม่มีจุดน่ากังวลเลย ให้เขียนอธิบายว่า "- วันนี้การบริหารเงินยังคงเป็นไปได้ด้วยดี ไม่พบจุดน่ากังวลชัดเจน")
+
+🌱 คำแนะนำ
+(ให้คำแนะนำที่ลึกซึ้ง ปฏิบัติได้จริง และมีประโยชน์ต่อเกษตรกรอย่างน้อย 3 ข้อ โดยแต่ละข้อต้องประกอบด้วย "หัวข้อแนะนำ - อธิบายเหตุผลความสำคัญ - แนวทางปฏิบัติเชิงรูปธรรม")
 1. ...
 2. ...
 3. ...
+
+---
+เป้าหมายความยาว: เขียนอธิบายให้ได้เนื้อหาที่สมบูรณ์ ครบถ้วน ได้ความยาวรวมประมาณ เพื่อความละเอียดและเป็นประโยชน์สูงสุดแก่เกษตรกร
 `.trim();
 }
 
 // =====================
-// GEMINI CALL
+// PUBLIC ENTRY POINT (UPDATED PROMPT CONSTRUCTION)
+// =====================
+async function generateAIInsight(userId) {
+    if (!process.env.GEMINI_API_KEY) {
+        return '⚠️ ระบบวิเคราะห์ยังไม่พร้อมใช้งานในตอนนี้\nกรุณาลองใหม่ภายหลัง';
+    }
+
+    try {
+        const profile = await getUserProfile(userId);
+        const province = profile?.province || "ไม่ระบุจังหวัด";
+        const farmType = profile?.farm_type || "ไม่ระบุประเภทเกษตร";
+
+        const data = await buildTodayInsightData(userId);
+
+        if (isTodayDataEmpty(data)) {
+            return '📊 วันนี้ยังไม่มีรายการบันทึก\nลองบันทึกรายรับ-รายจ่ายก่อนแล้วลองใหม่อีกครั้ง';
+        }
+
+        // ปรับปรุงการส่งต่อข้อมูลโปรไฟล์ฟาร์มเข้าไปใน data object เพื่อส่งให้ buildPrompt() ประมวลผลอย่างเป็นระบบ
+        data.province = province;
+        data.farmType = farmType;
+
+        const prompt = buildPrompt(data);
+        
+        // ส่ง prompt ไปยังโมเดล Gemini โดยใช้ข้อกำหนด Config ที่เหมาะสมที่สุดสำหรับคำตอบภาษาไทยที่เป็นธรรมชาติ
+        return await callGeminiInsight(prompt);
+    } catch (error) {
+        console.error('❌ Gemini insight error:', {
+            status: error.status || null,
+            code: error.code || null,
+            message: error.message,
+            details: error.details || null
+        });
+
+        if (error.message === 'NO_API_KEY') {
+            return '⚠️ ระบบวิเคราะห์ยังไม่พร้อมใช้งานในตอนนี้\nกรุณาลองใหม่ภายหลัง';
+        }
+
+        const statusCode = error.status || error.code;
+        const message = String(error.message || "").toLowerCase();
+
+        if (statusCode === 503 || message.includes('unavailable') || message.includes('high demand')) {
+            return '⚠️ ระบบ AI มีผู้ใช้งานจำนวนมากในขณะนี้\nกรุณาลองใหม่อีกครั้งในอีกสักครู่';
+        }
+
+        if (statusCode === 429 || statusCode === 'RESOURCE_EXHAUSTED' || message.includes('quota')) {
+            return '⚠️ วันนี้ระบบ AI ถูกใช้งานครบโควตาแล้ว\nกรุณาลองใหม่ภายหลัง';
+        }
+
+        if (statusCode === 401 || statusCode === 403 || statusCode === 'API_KEY_INVALID' || message.includes('api key')) {
+            return '⚠️ ระบบ AI ตั้งค่าไม่ถูกต้อง';
+        }
+
+        return '⚠️ ตอนนี้ระบบวิเคราะห์ยังไม่พร้อมใช้งาน\nคุณยังสามารถบันทึกข้อมูลและดูสรุปได้ตามปกติ';
+    }
+}
+
+// =====================
+// GEMINI CALL (SHOWING THE IMPLEMENTATION WITH PREFERRED CONFIG FOR INTEGRATION)
 // =====================
 async function callGeminiInsight(prompt) {
     const ai = getGeminiClient();
@@ -167,10 +250,10 @@ async function callGeminiInsight(prompt) {
                 model,
                 contents: prompt,
                 config: {
-                    temperature: 0.4,
-                    topP: 0.8,
-                    topK: 20,
-                    maxOutputTokens: 450
+                    temperature: 0.6,          // ปรับปรุงค่าตามคำแนะนำเพื่อให้ได้เนื้อหาเป็นธรรมชาติมากขึ้น
+                    topP: 0.9,                 // ปรับปรุงค่าตามคำแนะนำเพื่อลดการทับศัพท์และประโยคหุ่นยนต์
+                    topK: 40,                  // ปรับปรุงค่าตามคำแนะนำเพื่อให้กระจายคำภาษาไทยได้สมดุล
+                    maxOutputTokens: 1200      // ขยายขนาด Tokens เพื่อให้ได้ความยาว 400-600 คำอย่างสมบูรณ์
                 }
             });
 
@@ -183,72 +266,14 @@ async function callGeminiInsight(prompt) {
                                   message.includes('unavailable') ||
                                   message.includes('high demand');
 
-            // Retry strategy only on HTTP 503 / Unavailable / High Demand instances
             if (isUnavailable && attempt <= maxRetries) {
                 console.warn(`[GEMINI_RETRY] Attempt ${attempt} encountered 503. Retrying in ${retryDelayMs / 1000}s...`);
                 await new Promise(resolve => setTimeout(resolve, retryDelayMs));
                 continue;
             }
 
-            // Immediately fail out for 400, 401, 403, 404, 429, or when retries are exhausted
             throw error;
         }
-    }
-}
-
-// =====================
-// PUBLIC ENTRY POINT (unchanged external contract)
-// =====================
-async function generateAIInsight(userId) {
-    if (!process.env.GEMINI_API_KEY) {
-        return '⚠️ ระบบวิเคราะห์ยังไม่พร้อมใช้งานในตอนนี้\nกรุณาลองใหม่ภายหลัง';
-    }
-
-    try {
-        const profile = await getUserProfile(userId);
-        const province = profile?.province || "ไม่ระบุจังหวัด";
-        const farmType = profile?.farm_type || "ไม่ระบุประเภทเกษตร";
-
-        const data = await buildTodayInsightData(userId);
-
-        if (isTodayDataEmpty(data)) {
-            return '📊 วันนี้ยังไม่มีรายการบันทึก\nลองบันทึกรายรับ-รายจ่ายก่อนแล้วลองใหม่อีกครั้ง';
-        }
-
-        let prompt = buildPrompt(data);
-        prompt = `ข้อมูลผู้ใช้งาน\nจังหวัด\n${province}\nประเภทเกษตร\n${farmType}\n-----------------------------------\n` + prompt;
-        return await callGeminiInsight(prompt);
-    } catch (error) {
-        console.error('❌ Gemini insight error:', {
-            status: error.status || null,
-            code: error.code || null,
-            message: error.message,
-            details: error.details || null
-        });
-
-        if (error.message === 'NO_API_KEY') {
-            return '⚠️ ระบบวิเคราะห์ยังไม่พร้อมใช้งานในตอนนี้\nกรุณาลองใหม่ภายหลัง';
-        }
-
-        const statusCode = error.status || error.code;
-        const message = String(error.message || "").toLowerCase();
-
-        // Match 503 / Unavailable states
-        if (statusCode === 503 || message.includes('unavailable') || message.includes('high demand')) {
-            return '⚠️ ระบบ AI มีผู้ใช้งานจำนวนมากในขณะนี้\nกรุณาลองใหมีกครั้งในอีกสักครู่';
-        }
-
-        // Match 429 Quota limitations
-        if (statusCode === 429 || statusCode === 'RESOURCE_EXHAUSTED' || message.includes('quota')) {
-            return '⚠️ วันนี้ระบบ AI ถูกใช้งานครบโควตาแล้ว\nกรุณาลองใหม่ภายหลัง';
-        }
-
-        // Match Auth failures
-        if (statusCode === 401 || statusCode === 403 || statusCode === 'API_KEY_INVALID' || message.includes('api key')) {
-            return '⚠️ ระบบ AI ตั้งค่าไม่ถูกต้อง';
-        }
-
-        return '⚠️ ตอนนี้ระบบวิเคราะห์ยังไม่พร้อมใช้งาน\nคุณยังสามารถบันทึกข้อมูลและดูสรุปได้ตามปกติ';
     }
 }
 
