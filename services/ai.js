@@ -1,9 +1,7 @@
 const { GoogleGenAI } = require("@google/genai");
 const {
     getTodaySummary,
-    getRecentTransactions,
-    getTodayCategorySummary,
-    getDailySummary
+    getRecentTransactions
 } = require('../db/database');
 
 let aiInstance = null;
@@ -22,98 +20,135 @@ function getGeminiClient() {
     return aiInstance;
 }
 
-async function buildInsightData(userId) {
-    const todaySummary = await getTodaySummary(userId);
-    const daily = await getDailySummary(userId, 7);
-    const category = await getTodayCategorySummary(userId);
-    const recent = await getRecentTransactions(userId, 15);
+// =====================
+// DATE HELPERS (Asia/Bangkok, no DB changes needed)
+// =====================
+function toBangkokDateString(value) {
+    if (!value) return null;
+
+    const date = value instanceof Date ? value : new Date(value);
+
+    if (isNaN(date.getTime())) return null;
+
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Bangkok',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(date);
+}
+
+function isTodayBangkok(createdAtValue) {
+    const itemDate = toBangkokDateString(createdAtValue);
+    const todayDate = toBangkokDateString(new Date());
+
+    return itemDate !== null && itemDate === todayDate;
+}
+
+function getCreatedAt(item) {
+    // Postgres returns lowercase unquoted identifiers (createdat), but stay
+    // defensive in case the underlying row shape ever changes.
+    return item.createdat || item.createdAt;
+}
+
+// =====================
+// DATA COLLECTION (today only, minimal fields)
+// =====================
+async function buildTodayInsightData(userId) {
+    const [todaySummary, recent] = await Promise.all([
+        getTodaySummary(userId),
+        getRecentTransactions(userId, 50)
+    ]);
+
+    const todayItems = (recent || []).filter((item) => isTodayBangkok(getCreatedAt(item)));
+
+    const incomeList = todayItems
+        .filter((item) => item.type === 'income')
+        .map((item) => ({
+            note: item.note || 'ไม่ระบุ',
+            amount: Number(item.amount) || 0
+        }));
+
+    const expenseList = todayItems
+        .filter((item) => item.type === 'expense')
+        .map((item) => ({
+            note: item.note || 'ไม่ระบุ',
+            amount: Number(item.amount) || 0
+        }));
 
     return {
         todaySummary,
-        daily,
-        category,
-        recent
+        incomeList,
+        expenseList
     };
 }
 
-function hasEnoughData(data) {
-    return data.recent && data.recent.length >= 3;
+function isTodayDataEmpty(data) {
+    return data.incomeList.length === 0 && data.expenseList.length === 0;
 }
 
+// =====================
+// PROMPT (minimal payload, strict output contract)
+// =====================
 function buildPrompt(data) {
-    const { todaySummary, daily, category, recent } = data;
+    const { todaySummary, incomeList, expenseList } = data;
 
-    const summaryText = [
-        `รายรับวันนี้: ${todaySummary.income || 0} บาท`,
-        `รายจ่ายวันนี้: ${todaySummary.expense || 0} บาท`,
-        `คงเหลือวันนี้: ${todaySummary.balance || 0} บาท`
+    const incomeText = incomeList.length > 0
+        ? incomeList.map((item) => `- ${item.note} : ${item.amount} บาท`).join('\n')
+        : 'ไม่มีรายการ';
+
+    const expenseText = expenseList.length > 0
+        ? expenseList.map((item) => `- ${item.note} : ${item.amount} บาท`).join('\n')
+        : 'ไม่มีรายการ';
+
+    const totalsText = [
+        `รายรับรวม: ${todaySummary.income || 0} บาท`,
+        `รายจ่ายรวม: ${todaySummary.expense || 0} บาท`,
+        `คงเหลือ: ${todaySummary.balance || 0} บาท`
     ].join('\n');
 
-    const dailyText = (daily || []).length > 0
-        ? daily.map(item =>
-            `วันที่ ${item.date} | รายรับ ${item.income || 0} | รายจ่าย ${item.expense || 0} | คงเหลือ ${item.balance || 0}`
-        ).join('\n')
-        : 'ไม่มีข้อมูล';
-
-    const categoryText = (category || []).length > 0
-        ? category.map(item =>
-            `หมวด ${item.category || 'อื่นๆ'} | ประเภท ${item.type} | จำนวนรายการ ${item.count || 0} | รวม ${item.total || 0}`
-        ).join('\n')
-        : 'ไม่มีข้อมูล';
-
-    const recentText = (recent || []).length > 0
-        ? recent.map(item =>
-            `${item.createdAt} | ${item.type} | ${item.note || '-'} | ${item.category || 'อื่นๆ'} | ${item.amount || 0} บาท`
-        ).join('\n')
-        : 'ไม่มีข้อมูล';
-
     return `
-คุณคือผู้ช่วยวิเคราะห์การเงินสำหรับเกษตรกรไทย
+คุณคือระบบวิเคราะห์บัญชีฟาร์มสำหรับเกษตรกรไทย
 
-หน้าที่:
-- วิเคราะห์พฤติกรรมรายรับรายจ่ายจากข้อมูลจริง
-- สรุปให้เข้าใจง่าย
-- ให้คำแนะนำที่ใช้ได้จริง
-- ห้ามเดาข้อมูลเกินจากที่มี
-- ถ้าข้อมูลยังน้อย ให้พูดอย่างระมัดระวัง
-- ใช้ภาษาไทยง่าย ๆ ไม่ทางการเกินไป
-- คำตอบต้องสั้น กระชับ และอ่านง่ายใน LINE
+กฎเคร่งครัด:
+- วิเคราะห์เฉพาะข้อมูลที่ให้มาด้านล่างเท่านั้น
+- ห้ามสมมติหรือแต่งตัวเลขใด ๆ ที่ไม่ได้อยู่ในข้อมูล
+- ห้ามเอ่ยถึงคำว่า AI หรือระบุว่าตนเองเป็นปัญญาประดิษฐ์
+- ตอบเป็นภาษาไทยเท่านั้น
+- ความยาวรวมไม่เกินประมาณ 250 คำ
 
-ข้อมูลผู้ใช้:
+ข้อมูลวันนี้:
 
-[SUMMARY]
-${summaryText}
+[รายรับวันนี้]
+${incomeText}
 
-[DAILY 7 DAYS]
-${dailyText}
+[รายจ่ายวันนี้]
+${expenseText}
 
-[CATEGORY TODAY]
-${categoryText}
+[ยอดรวมวันนี้]
+${totalsText}
 
-[RECENT TRANSACTIONS]
-${recentText}
+ตอบตาม format นี้เท่านั้น (ห้ามเพิ่มหัวข้ออื่น):
 
-กรุณาตอบใน format นี้เท่านั้น:
-
-📊 ภาพรวม
-- ...
+ภาพรวม
 - ...
 
-⚠️ สิ่งที่ควรระวัง
-- ...
+จุดที่ดี
 - ...
 
-💡 คำแนะนำ
+ข้อควรระวัง
+- ...
+
+คำแนะนำ 3 ข้อ
 1. ...
 2. ...
 3. ...
-
-เงื่อนไขเพิ่มเติม:
-- ถ้าไม่มีประเด็นเตือนจริง ๆ ให้เขียนว่า "- ยังไม่พบจุดน่ากังวลชัดเจน"
-- ห้ามตอบยาวเกิน 900 ตัวอักษร
 `.trim();
 }
 
+// =====================
+// GEMINI CALL
+// =====================
 async function callGeminiInsight(prompt) {
     const ai = getGeminiClient();
 
@@ -129,16 +164,22 @@ async function callGeminiInsight(prompt) {
         try {
             const response = await ai.models.generateContent({
                 model,
-                contents: prompt
+                contents: prompt,
+                config: {
+                    temperature: 0.4,
+                    topP: 0.8,
+                    topK: 20,
+                    maxOutputTokens: 450
+                }
             });
 
             return response.text?.trim() || '⚠️ ไม่สามารถสร้างคำวิเคราะห์ได้ในขณะนี้';
         } catch (error) {
             const statusCode = error.status || error.code;
             const message = String(error.message || "").toLowerCase();
-            
-            const isUnavailable = statusCode === 503 || 
-                                  message.includes('unavailable') || 
+
+            const isUnavailable = statusCode === 503 ||
+                                  message.includes('unavailable') ||
                                   message.includes('high demand');
 
             // Retry strategy only on HTTP 503 / Unavailable / High Demand instances
@@ -154,16 +195,19 @@ async function callGeminiInsight(prompt) {
     }
 }
 
+// =====================
+// PUBLIC ENTRY POINT (unchanged external contract)
+// =====================
 async function generateAIInsight(userId) {
     if (!process.env.GEMINI_API_KEY) {
         return '⚠️ ระบบวิเคราะห์ยังไม่พร้อมใช้งานในตอนนี้\nกรุณาลองใหม่ภายหลัง';
     }
 
     try {
-        const data = await buildInsightData(userId);
+        const data = await buildTodayInsightData(userId);
 
-        if (!hasEnoughData(data)) {
-            return '📊 ยังมีข้อมูลไม่เพียงพอสำหรับการวิเคราะห์\nลองบันทึกเพิ่มอีกสัก 2-3 รายการแล้วลองใหม่อีกครั้ง';
+        if (isTodayDataEmpty(data)) {
+            return '📊 วันนี้ยังไม่มีรายการบันทึก\nลองบันทึกรายรับ-รายจ่ายก่อนแล้วลองใหม่อีกครั้ง';
         }
 
         const prompt = buildPrompt(data);
@@ -182,12 +226,12 @@ async function generateAIInsight(userId) {
 
         const statusCode = error.status || error.code;
         const message = String(error.message || "").toLowerCase();
-        
+
         // Match 503 / Unavailable states
         if (statusCode === 503 || message.includes('unavailable') || message.includes('high demand')) {
             return '⚠️ ระบบ AI มีผู้ใช้งานจำนวนมากในขณะนี้\nกรุณาลองใหม่อีกครั้งในอีกสักครู่';
         }
-        
+
         // Match 429 Quota limitations
         if (statusCode === 429 || statusCode === 'RESOURCE_EXHAUSTED' || message.includes('quota')) {
             return '⚠️ วันนี้ระบบ AI ถูกใช้งานครบโควตาแล้ว\nกรุณาลองใหม่ภายหลัง';
