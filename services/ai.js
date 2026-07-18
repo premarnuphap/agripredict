@@ -1,7 +1,8 @@
 const { GoogleGenAI } = require("@google/genai");
 const {
     getTodaySummary,
-    getRecentTransactions
+    getRecentTransactions,
+    getUserProfile
 } = require('../db/database');
 
 let aiInstance = null;
@@ -204,13 +205,18 @@ async function generateAIInsight(userId) {
     }
 
     try {
+        const profile = await getUserProfile(userId);
+        const province = profile?.province || "ไม่ระบุจังหวัด";
+        const farmType = profile?.farm_type || "ไม่ระบุประเภทเกษตร";
+
         const data = await buildTodayInsightData(userId);
 
         if (isTodayDataEmpty(data)) {
             return '📊 วันนี้ยังไม่มีรายการบันทึก\nลองบันทึกรายรับ-รายจ่ายก่อนแล้วลองใหม่อีกครั้ง';
         }
 
-        const prompt = buildPrompt(data);
+        let prompt = buildPrompt(data);
+        prompt = `ข้อมูลผู้ใช้งาน\nจังหวัด\n${province}\nประเภทเกษตร\n${farmType}\n-----------------------------------\n` + prompt;
         return await callGeminiInsight(prompt);
     } catch (error) {
         console.error('❌ Gemini insight error:', {
@@ -229,7 +235,7 @@ async function generateAIInsight(userId) {
 
         // Match 503 / Unavailable states
         if (statusCode === 503 || message.includes('unavailable') || message.includes('high demand')) {
-            return '⚠️ ระบบ AI มีผู้ใช้งานจำนวนมากในขณะนี้\nกรุณาลองใหม่อีกครั้งในอีกสักครู่';
+            return '⚠️ ระบบ AI มีผู้ใช้งานจำนวนมากในขณะนี้\nกรุณาลองใหมีกครั้งในอีกสักครู่';
         }
 
         // Match 429 Quota limitations
