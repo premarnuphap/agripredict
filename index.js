@@ -11,6 +11,7 @@ const {
     getDailySummary,
     getMonthlySummary,
     deleteTodayTransactionsByUser,
+    canUseAI,
     saveTransaction
 } = require('./db/database');
 const { generateAIInsight } = require('./services/ai');
@@ -751,10 +752,18 @@ async function handleEvent(event) {
         const isSummaryRequest = isSummaryCommand(text);
 
         if (isAIInsightCommand(text)) {
+            const allowed = await canUseAI(userId);
+            if (!allowed) {
+                return safeReply(
+                    event.replyToken,
+                    "⚠️ วันนี้คุณใช้ AI วิเคราะห์ครบ 3 ครั้งแล้ว\n\nระบบจะรีเซ็ตโควตาอัตโนมัติหลังเวลา 00:00 น."
+                );
+            }
+        
             const insight = await generateAIInsight(userId);
+        
             return safeReply(event.replyToken, insight);
-        }
-
+    }
         const parsedList = parseMessage(text);
 
         console.log('[PARSED]', parsedList);
