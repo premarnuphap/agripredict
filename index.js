@@ -139,26 +139,20 @@ if (!process.env.LINE_CHANNEL_ACCESS_TOKEN || !process.env.LINE_CHANNEL_SECRET) 
 // ONBOARDING (PROVINCE / FARM TYPE)
 // =====================
 const PROVINCE_OPTIONS = [
-    'Bangkok',
-    'Chiang Mai',
-    'Chiang Rai',
-    'Nakhon Ratchasima',
-    'Khon Kaen',
-    'Chonburi',
-    'Songkhla',
-    'Surat Thani',
-    'Nakhon Si Thammarat',
-    'Phitsanulok'
+    'ตราด','จันทบุรี','ชลบุรี','ระยอง'
 ];
 
 const FARM_TYPE_OPTIONS = [
     { label: '🌾 พืชไร่', value: 'พืชไร่' },
     { label: '🍊 พืชสวน', value: 'พืชสวน' },
+    { label: '🌱 พืชผัก', value: 'พืชผัก' },
     { label: '🐟 ประมง', value: 'ประมง' },
-    { label: '🐄 โคขุน', value: 'โคขุน' },
+    { label: '🐄 โค-กระบือ', value: 'ปศุสัตว์สัตว์ใหญ่' },
     { label: '🐖 สุกร', value: 'สุกร' },
-    { label: '🐔 สัตว์ปีก', value: 'สัตว์ปีก' }
-];
+    { label: '🐔 สัตว์ปีก', value: 'สัตว์ปีก' },
+    { label: '🦗 แมลงเศรษฐกิจ', value: 'แมลงเศรษฐกิจ' },
+    { label: '🏡 เกษตรผสมผสาน', value: 'เกษตรผสมผสาน' } // ดักไว้สำหรับคนทำหลายอย่าง
+]
 
 function buildQuickReplyItems(labels) {
     return labels.map((label) => ({
