@@ -4,13 +4,14 @@ const express = require('express');
 const line = require('@line/bot-sdk');
 const {
     pool,
-    initDb,
+    dbReady,
     getTodaySummary,
     getRecentTransactions,
     getTodayCategorySummary,
     getDailySummary,
     getMonthlySummary,
-    deleteTodayTransactionsByUser
+    deleteTodayTransactionsByUser,
+    saveTransaction
 } = require('./db/database');
 const { generateAIInsight } = require('./services/ai');
 
@@ -304,6 +305,7 @@ const CATEGORY_RULES = [
 app.post('/webhook', line.middleware(config), (req, res) => {
     const events = req.body.events || [];
 
+    // ตอบ LINE ให้เร็วที่สุดก่อน
     res.status(200).end();
 
     Promise.all(
@@ -321,13 +323,13 @@ app.post('/webhook', line.middleware(config), (req, res) => {
 
 app.use(express.json());
 
+
 app.post('/api/reset-today', async (req, res) => {
     try {
         const { userId } = req.body || {};
 
         if (!requireUserId(res, userId)) return;
 
-        // Migrated: Awaiting async engine call
         const result = await deleteTodayTransactionsByUser(userId);
 
         res.json({
@@ -363,6 +365,7 @@ function classifyCategoryOverride(text) {
 
     if (!input) return null;
 
+    // 1) ค่าแรง ต้องชนะก่อน ถ้ามีคำว่าจ้าง/คน/แรงงาน
     if (
         /(จ้าง|ค่าจ้าง|ค่าแรง|แรงงาน|คนงาน|ลูกน้อง)/.test(input) &&
         !/(ขาย|รับเงิน|ได้เงิน)/.test(input)
@@ -370,6 +373,7 @@ function classifyCategoryOverride(text) {
         return 'ค่าแรง';
     }
 
+    // 2) ค่าซ่อม / บำรุงรักษา
     if (
         /(ซ่อม|ซ่อมแซม|ค่าซ่อม|บำรุง|บำรุงรักษา|อะไหล่|เปลี่ยนอะไหล่|repair)/.test(input)
     ) {
@@ -679,50 +683,6 @@ function parseMessage(text) {
 }
 
 // =====================
-// SAVE TRANSACTION
-// =====================
-async function saveTransaction(userId, tx, sourceMessageId, sourceTxnIndex) {
-    const { type, amount, category, note } = tx;
-
-    if (!userId || !type || !amount || amount <= 0) {
-        throw new Error('Invalid transaction data');
-    }
-
-    if (sourceMessageId === undefined || sourceMessageId === null) {
-        throw new Error('Missing sourceMessageId');
-    }
-
-    const query = `
-        INSERT INTO transactions (
-            "userId",
-            type,
-            amount,
-            category,
-            note,
-            "sourceMessageId",
-            "sourceTxnIndex"
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id
-    `;
-
-    const res = await pool.query(query, [
-        userId,
-        type,
-        amount,
-        category,
-        note || 'ไม่ระบุ',
-        sourceMessageId,
-        sourceTxnIndex
-    ]);
-
-    return {
-        id: res.rows[0].id,
-        changes: res.rowCount
-    };
-}
-
-// =====================
 // SUMMARY
 // =====================
 async function getTodaySummaryAsync(userId) {
@@ -754,7 +714,7 @@ async function safePush(userId, text) {
 // =====================
 async function handleEvent(event) {
     if (event.type === 'follow') {
-        return await safeReply(event.replyToken, WELCOME_MESSAGE);
+        return safeReply(event.replyToken, WELCOME_MESSAGE);
     }
 
     let userId = null;
@@ -770,11 +730,11 @@ async function handleEvent(event) {
         const text = event.message.text.trim();
 
         if (isHelpCommand(text)) {
-            return await safeReply(event.replyToken, HELP_MESSAGE);
+            return safeReply(event.replyToken, HELP_MESSAGE);
         }
 
         if (isDashboardCommand(text)) {
-            return await safeReply(event.replyToken, formatDashboardMessage(userId));
+            return safeReply(event.replyToken, formatDashboardMessage(userId));
         }
 
         console.log('[INCOMING]', {
@@ -792,7 +752,7 @@ async function handleEvent(event) {
 
         if (isAIInsightCommand(text)) {
             const insight = await generateAIInsight(userId);
-            return await safeReply(event.replyToken, insight);
+            return safeReply(event.replyToken, insight);
         }
 
         const parsedList = parseMessage(text);
@@ -800,9 +760,11 @@ async function handleEvent(event) {
         console.log('[PARSED]', parsedList);
 
         if (parsedList.length > 0) {
-            for (let index = 0; index < parsedList.length; index++) {
-                await saveTransaction(userId, parsedList[index], sourceMessageId, index);
-            }
+            await Promise.all(
+                parsedList.map((tx, index) =>
+                    saveTransaction(userId, tx, sourceMessageId, index)
+                )
+            );
         }
 
         if (parsedList.length > 0) {
@@ -843,7 +805,7 @@ async function handleEvent(event) {
         console.error('❌ handleEvent error:', error);
 
         const isDuplicate =
-            error && error.message && (error.message.includes('unique constraint') || error.code === '23505');
+            error && error.message && error.message.includes('UNIQUE constraint failed');
 
         if (isDuplicate) {
             console.log('[DUPLICATE]', {
@@ -1050,7 +1012,6 @@ if (process.env.ENABLE_DEBUG === 'true') {
             });
         }
     });
-    
     app.get('/debug/monthly-summary', async (req, res) => {
         try {
             const { userId } = req.query;
@@ -1080,32 +1041,13 @@ app.get('/dashboard', (req, res) => {
     res.send(renderDashboardPage(process.env.LIFF_ID));
 });
 
-// Sequentially wait for DB table & index initialization before listening
-initDb()
+dbReady
     .then(() => {
-        const server = app.listen(PORT, () => {
+        app.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);
         });
-
-        // Graceful shutdown protocol
-        const shutdown = () => {
-            console.log('🔄 Shutdown signal received. Closing pool connections...');
-            server.close(async () => {
-                try {
-                    await pool.end();
-                    console.log('✅ PostgreSQL pool connections drained gracefully.');
-                    process.exit(0);
-                } catch (err) {
-                    console.error('❌ Error during pool drainage:', err);
-                    process.exit(1);
-                }
-            });
-        };
-
-        process.on('SIGTERM', shutdown);
-        process.on('SIGINT', shutdown);
     })
-    .catch((err) => {
-        console.error('❌ App startup terminated due to initialization failure:', err);
+    .catch((error) => {
+        console.error('❌ Failed to start server due to database initialization error:', error);
         process.exit(1);
     });
