@@ -12,6 +12,10 @@ const {
     getMonthlySummary,
     deleteTodayTransactionsByUser,
     canUseAI,
+    getUserProfile,
+    isProfileCompleted,
+    saveProvince,
+    saveFarmType,
     saveTransaction
 } = require('./db/database');
 const { generateAIInsight } = require('./services/ai');
@@ -131,7 +135,119 @@ if (!process.env.LINE_CHANNEL_ACCESS_TOKEN || !process.env.LINE_CHANNEL_SECRET) 
     console.error('❌ Missing LINE env variables');
     process.exit(1);
 }
+// =====================
+// ONBOARDING (PROVINCE / FARM TYPE)
+// =====================
+const PROVINCE_OPTIONS = [
+    'Bangkok',
+    'Chiang Mai',
+    'Chiang Rai',
+    'Nakhon Ratchasima',
+    'Khon Kaen',
+    'Chonburi',
+    'Songkhla',
+    'Surat Thani',
+    'Nakhon Si Thammarat',
+    'Phitsanulok'
+];
 
+const FARM_TYPE_OPTIONS = [
+    { label: '🌾 พืชไร่', value: 'พืชไร่' },
+    { label: '🍊 พืชสวน', value: 'พืชสวน' },
+    { label: '🐟 ประมง', value: 'ประมง' },
+    { label: '🐄 โคขุน', value: 'โคขุน' },
+    { label: '🐖 สุกร', value: 'สุกร' },
+    { label: '🐔 สัตว์ปีก', value: 'สัตว์ปีก' }
+];
+
+function buildQuickReplyItems(labels) {
+    return labels.map((label) => ({
+        type: 'action',
+        action: {
+            type: 'message',
+            label: label.length > 20 ? label.slice(0, 20) : label,
+            text: label
+        }
+    }));
+}
+
+async function sendProvinceQuickReply(replyToken) {
+    return client.replyMessage(replyToken, {
+        type: 'text',
+        text: '📍 กรุณาเลือกจังหวัดของคุณ',
+        quickReply: {
+            items: buildQuickReplyItems(PROVINCE_OPTIONS)
+        }
+    });
+}
+
+async function sendFarmTypeQuickReply(replyToken) {
+    return client.replyMessage(replyToken, {
+        type: 'text',
+        text: '🌱 กรุณาเลือกประเภทฟาร์มของคุณ',
+        quickReply: {
+            items: buildQuickReplyItems(FARM_TYPE_OPTIONS.map((item) => item.label))
+        }
+    });
+}
+
+function matchProvince(text) {
+    const input = String(text || '').trim();
+    return PROVINCE_OPTIONS.find((province) => province === input) || null;
+}
+
+function matchFarmType(text) {
+    const input = String(text || '').trim();
+    const found = FARM_TYPE_OPTIONS.find((item) => item.label === input || item.value === input);
+    return found ? found.value : null;
+}
+
+/**
+ * Handles a text message during onboarding (province/farm type selection).
+ * Returns true if the message was consumed as an onboarding step
+ * (caller should stop processing further), false if onboarding
+ * is still incomplete but the message didn't match an expected option
+ * (still consumed — we re-prompt), or null if profile is already complete
+ * (caller should proceed with normal accounting flow).
+ */
+async function handleOnboardingStep(event, userId, text) {
+    const profile = await getUserProfile(userId);
+
+    const hasProvince = !!(profile && profile.province);
+    const hasFarmType = !!(profile && profile.farm_type);
+
+    if (hasProvince && hasFarmType) {
+        return false; // profile already complete, not an onboarding turn
+    }
+
+    if (!hasProvince) {
+        const province = matchProvince(text);
+
+        if (!province) {
+            await sendProvinceQuickReply(event.replyToken);
+            return true;
+        }
+
+        await saveProvince(userId, province);
+        await sendFarmTypeQuickReply(event.replyToken);
+        return true;
+    }
+
+    if (!hasFarmType) {
+        const farmType = matchFarmType(text);
+
+        if (!farmType) {
+            await sendFarmTypeQuickReply(event.replyToken);
+            return true;
+        }
+
+        await saveFarmType(userId, farmType);
+        await safeReply(event.replyToken, 'ลงทะเบียนเรียบร้อยแล้ว');
+        return true;
+    }
+
+    return false;
+}
 const client = new line.Client(config);
 const PORT = process.env.PORT || 3000;
 
@@ -714,9 +830,21 @@ async function safePush(userId, text) {
 // =====================
 async function handleEvent(event) {
     if (event.type === 'follow') {
-        return safeReply(event.replyToken, WELCOME_MESSAGE);
+        await safeReply(event.replyToken, WELCOME_MESSAGE);
+    
+        const followUserId = event.source?.userId;
+        if (followUserId) {
+            await client.pushMessage(followUserId, {
+                type: 'text',
+                text: '📍 กรุณาเลือกจังหวัดของคุณ',
+                quickReply: {
+                    items: buildQuickReplyItems(PROVINCE_OPTIONS)
+                }
+            });
+        }
+    
+        return null;
     }
-
     let userId = null;
     let sourceMessageId = null;
 
@@ -747,7 +875,10 @@ async function handleEvent(event) {
             console.error('❌ Missing userId in event source');
             return null;
         }
-
+        const onboardingHandled = await handleOnboardingStep(event, userId, text);
+        if (onboardingHandled) {
+            return null;
+        }
         const isSummaryRequest = isSummaryCommand(text);
 
         if (isAIInsightCommand(text)) {
