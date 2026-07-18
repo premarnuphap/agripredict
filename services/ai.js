@@ -240,7 +240,7 @@ async function callGeminiInsight(prompt) {
         throw new Error('NO_API_KEY');
     }
 
-    const model = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
     const maxRetries = 3;
     const retryDelayMs = 2000;
 
@@ -257,6 +257,15 @@ async function callGeminiInsight(prompt) {
                 }
             });
 
+            console.log("========== GEMINI RESPONSE ==========");
+            console.dir(response, { depth: null });
+            
+            console.log("========== RESPONSE.TEXT ==========");
+            console.log(response.text);
+            
+            console.log("========== LENGTH ==========");
+            console.log(response.text?.length);
+            
             return response.text?.trim() || '⚠️ ไม่สามารถสร้างคำวิเคราะห์ได้ในขณะนี้';
         } catch (error) {
             const statusCode = error.status || error.code;
