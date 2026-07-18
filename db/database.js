@@ -364,33 +364,31 @@ async function getRegistrationStep(userId) {
     return result.rows[0].registration_step || "province";
 }
 async function saveProvince(userId, province) {
-  await pool.query(
-    `
-    INSERT INTO user_profile (
-    user_id,
-    province,
-    registration_step
-    )
-    VALUES (
-    $1,
-    $2,
-    'farm_type'
-    )
-    VALUES ($1,$2)
+    await pool.query(
+        `
+        INSERT INTO user_profile (
+            user_id,
+            province,
+            registration_step
+        )
+        VALUES (
+            $1,
+            $2,
+            'farm_type'
+        )
 
-    ON CONFLICT (user_id)
+        ON CONFLICT (user_id)
 
-    DO UPDATE
+        DO UPDATE
 
-    SET
-        province = EXCLUDED.province,
-        registration_step = 'farm_type',
-        updated_at = CURRENT_TIMESTAMP
-    `,
-    [userId, province]
-  );
+        SET
+            province = EXCLUDED.province,
+            registration_step = 'farm_type',
+            updated_at = CURRENT_TIMESTAMP
+        `,
+        [userId, province]
+    );
 }
-
 async function saveFarmType(userId, farmType) {
   await pool.query(
     `
