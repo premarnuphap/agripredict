@@ -2,7 +2,6 @@ require('dotenv').config();
 
 const express = require('express');
 const line = require('@line/bot-sdk');
-const referralRoute = require("./referral");
 const {
     pool,
     dbReady,
@@ -324,8 +323,6 @@ app.post('/webhook', line.middleware(config), (req, res) => {
 });
 
 app.use(express.json());
-
-app.use("/join", referralRoute);
 
 app.post('/api/reset-today', async (req, res) => {
     try {
