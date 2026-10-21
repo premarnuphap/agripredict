@@ -54,10 +54,10 @@ const HELP_MESSAGE = `
 🌱 บันทึกรายรับหรือรายจ่าย
 พิมพ์ข้อความตามปกติ เช่น
 
-• ซื้อปุ๋ย 500 บาท
-• ซื้ออาหารสัตว์ 1,200 บาท
-• ขายข้าว 8,500 บาท
-• ขายยางพารา 12,000 บาท
+ซื้อปุ๋ย 500 บาท
+ซื้ออาหารสัตว์ 1,200 บาท
+ขายข้าว 8,500 บาท
+ขายยางพารา 12,000 บาท
 
 ━━━━━━━━━━━━━━━━━━
 
@@ -110,8 +110,8 @@ const PARSE_ERROR_MESSAGE = `
 
 💡 คำแนะนำ
 
-• ระบุจำนวนเงินเป็น "บาท"
-• ใส่ชื่อรายการให้ชัดเจน
+ระบุจำนวนเงินเป็น "บาท"
+ใส่ชื่อรายการให้ชัดเจน
 
 ตัวอย่าง
 
@@ -146,7 +146,6 @@ function formatDashboardMessage(userId) {
 
 function isAIInsightCommand(text) {
     const t = text.toLowerCase().trim();
-
     return (
         t === 'วิเคราะห์' ||
         t === 'ขอคำแนะนำ' ||
@@ -172,11 +171,12 @@ if (!process.env.LINE_CHANNEL_ACCESS_TOKEN || !process.env.LINE_CHANNEL_SECRET) 
     console.error('❌ Missing LINE env variables');
     process.exit(1);
 }
+
 // =====================
 // ONBOARDING (PROVINCE / FARM TYPE)
 // =====================
 const PROVINCE_OPTIONS = [
-    'ตราด','จันทบุรี','ชลบุรี','ระยอง'
+    'ตราด', 'จันทบุรี', 'ชลบุรี', 'ระยอง'
 ];
 
 const FARM_TYPE_OPTIONS = [
@@ -188,8 +188,8 @@ const FARM_TYPE_OPTIONS = [
     { label: '🐖 สุกร', value: 'สุกร' },
     { label: '🐔 สัตว์ปีก', value: 'สัตว์ปีก' },
     { label: '🦗 แมลงเศรษฐกิจ', value: 'แมลงเศรษฐกิจ' },
-    { label: '🏡 เกษตรผสมผสาน', value: 'เกษตรผสมผสาน' } // ดักไว้สำหรับคนทำหลายอย่าง
-]
+    { label: '🏡 เกษตรผสมผสาน', value: 'เกษตรผสมผสาน' }
+];
 
 function buildQuickReplyItems(labels) {
     return labels.map((label) => ({
@@ -236,9 +236,7 @@ function matchFarmType(text) {
 /**
  * Handles a text message during onboarding (province/farm type selection).
  * Returns true if the message was consumed as an onboarding step
- * (caller should stop processing further), false if onboarding
- * is still incomplete but the message didn't match an expected option
- * (still consumed — we re-prompt), or null if profile is already complete
+ * (caller should stop processing further), false if profile is complete
  * (caller should proceed with normal accounting flow).
  */
 async function handleOnboardingStep(event, userId, text) {
@@ -279,6 +277,7 @@ async function handleOnboardingStep(event, userId, text) {
 
     return false;
 }
+
 const client = new line.Client(config);
 const PORT = process.env.PORT || 3000;
 
@@ -296,34 +295,28 @@ const CATEGORY_RULES = [
             'กล้า', 'ต้นกล้า', 'เพาะกล้า', 'ถาดเพาะ',
             'ลูกไก่', 'ลูกเป็ด', 'ลูกหมู', 'ลูกปลา', 'ลูกกุ้ง',
             'แม่พันธุ์', 'พ่อพันธุ์',
-
             'ปุ๋ย', 'ปุย', 'ปุ๋ยเคมี', 'ปุ๋ยคอก', 'ปุ๋ยอินทรีย์', 'ปุ๋ยหมัก',
             'ยูเรีย', '151515', '161616', '4600',
             'โดโลไมท์', 'ปูนขาว', 'ยิปซัม',
             'ขี้วัว', 'ขี้ไก่', 'ขี้หมู', 'มูลสัตว์',
             'แกลบ', 'แกลบดิบ', 'แกลบเผา', 'ฟาง', 'ขุยมะพร้าว',
             'ดิน', 'ดินปลูก', 'ปรับดิน', 'บำรุงดิน',
-
             'ยา', 'ยาแมลง', 'ยาหญ้า', 'ยาหนอน', 'ยาเชื้อ',
             'ยาฆ่าแมลง', 'ยาฆ่าหญ้า', 'ยาฆ่าเชื้อ',
             'พ่นยา', 'ฉีดยา',
             'สารเคมี', 'เคมี', 'ฮอร์โมน',
             'วัคซีน', 'ยาฉีด', 'เวชภัณฑ์',
             'ยาปฏิชีวนะ', 'ยาบำรุง', 'วิตามิน',
-
             'อาหารสัตว์', 'อาหารไก่', 'อาหารหมู', 'อาหารปลา', 'อาหารกุ้ง',
             'อาหารเม็ด', 'อาหารผง', 'อาหารข้น',
             'รำ', 'รำละเอียด', 'รำหยาบ',
             'ปลายข้าว', 'ข้าวโพด', 'กากถั่ว', 'กากมัน',
             'หัวอาหาร', 'อาหารสำเร็จรูป',
-
             'น้ำ', 'น้ำประปา', 'เติมน้ำ', 'สูบน้ำ', 'รดน้ำ',
             'ไฟ', 'ไฟฟ้า',
             'ปั๊ม', 'ปั๊มน้ำ', 'เครื่องสูบ',
-
             'น้ำมัน', 'เติมน้ำมัน', 'น้ำมันเครื่อง', 'น้ำมันดีเซล', 'เบนซิน',
             'น้ำมันเครื่องสูบ', 'น้ำมันรถไถ', 'น้ำมันเครื่องตัดหญ้า',
-
             'ขี้เลื่อย', 'รองพื้นคอก', 'แกลบรองพื้น',
             'ถุงอาหาร', 'ถุงปุ๋ย', 'เชือก', 'พลาสติกคลุมดิน'
         ],
@@ -385,14 +378,11 @@ const CATEGORY_RULES = [
             'เครื่องพ่น', 'เครื่องตัดหญ้า', 'เครื่องสูบ', 'เครื่องไถ',
             'เครื่องบด', 'เครื่องผสมอาหาร',
             'รถไถ', 'รถเกี่ยว',
-
             'คอก', 'กรง', 'เล้าไก่', 'โรงเรือน',
             'โรงเรือนหมู', 'โรงเรือนไก่',
             'แทงค์น้ำ', 'ถังน้ำใหญ่',
-
             'ระบบน้ำ', 'ระบบไฟ',
             'ท่อ', 'สปริงเกอร์', 'น้ำหยด',
-
             'ติดตั้ง', 'ต่อเติม', 'ทำหลังคา', 'ทำพื้น'
         ],
         patterns: [
@@ -448,29 +438,39 @@ const CATEGORY_RULES = [
 ];
 
 // =====================
-// WEBHOOK
+// WEBHOOK — FIX #1: await งานทั้งหมดให้เสร็จก่อนตอบ 200
 // =====================
-app.post('/webhook', line.middleware(config), (req, res) => {
+app.post('/webhook', line.middleware(config), async (req, res) => {
     const events = req.body.events || [];
 
-    // ตอบ LINE ให้เร็วที่สุดก่อน
-    res.status(200).end();
+    try {
+        await Promise.all(
+            events.map(async (event) => {
+                try {
+                    await handleEvent(event);
+                } catch (eventError) {
+                    console.error('[EVENT_ERROR]', {
+                        type: event?.type,
+                        messageId: event?.message?.id,
+                        message: eventError?.message,
+                        stack: eventError?.stack
+                    });
+                }
+            })
+        );
 
-    Promise.all(
-        events.map(async (event) => {
-            try {
-                await handleEvent(event);
-            } catch (eventError) {
-                console.error('❌ event processing error:', eventError);
-            }
-        })
-    ).catch((error) => {
-        console.error('❌ webhook background error:', error);
-    });
+        return res.status(200).end();
+    } catch (error) {
+        console.error('[WEBHOOK_ERROR]', error);
+        return res.status(500).end();
+    }
 });
 
 app.use(express.json());
 
+// =====================
+// RESET — FIX #3: ส่ง push ก่อน แล้วค่อยตอบ JSON
+// =====================
 app.post('/api/reset-today', async (req, res) => {
     try {
         const { userId } = req.body || {};
@@ -478,11 +478,6 @@ app.post('/api/reset-today', async (req, res) => {
         if (!requireUserId(res, userId)) return;
 
         const result = await deleteTodayTransactionsByUser(userId);
-
-        res.json({
-            ok: true,
-            deletedCount: result.deletedCount
-        });
 
         if (result.deletedCount > 0) {
             await safePush(
@@ -495,6 +490,11 @@ app.post('/api/reset-today', async (req, res) => {
                 'ℹ️ รีเซ็ตข้อมูลวันนี้เรียบร้อยแล้ว\nแต่วันนี้ยังไม่มีข้อมูลให้ลบ'
             );
         }
+
+        res.json({
+            ok: true,
+            deletedCount: result.deletedCount
+        });
     } catch (error) {
         console.error('❌ /api/reset-today error:', error);
         res.status(500).json({
@@ -512,7 +512,6 @@ function classifyCategoryOverride(text) {
 
     if (!input) return null;
 
-    // 1) ค่าแรง ต้องชนะก่อน ถ้ามีคำว่าจ้าง/คน/แรงงาน
     if (
         /(จ้าง|ค่าจ้าง|ค่าแรง|แรงงาน|คนงาน|ลูกน้อง)/.test(input) &&
         !/(ขาย|รับเงิน|ได้เงิน)/.test(input)
@@ -520,7 +519,6 @@ function classifyCategoryOverride(text) {
         return 'ค่าแรง';
     }
 
-    // 2) ค่าซ่อม / บำรุงรักษา
     if (
         /(ซ่อม|ซ่อมแซม|ค่าซ่อม|บำรุง|บำรุงรักษา|อะไหล่|เปลี่ยนอะไหล่|repair)/.test(input)
     ) {
@@ -857,367 +855,136 @@ async function safePush(userId, text) {
 }
 
 // =====================
-// HANDLE EVENT
+// HANDLE EVENT — FIX #2: รวม follow เป็น reply เดียว
 // =====================
 async function handleEvent(event) {
+    if (!event || !event.type) return;
+
+    // -------- FOLLOW --------
+    // FIX: replyToken ใช้ได้ครั้งเดียว → รวม welcome + quick reply ใน reply เดียว
     if (event.type === 'follow') {
-        await safeReply(event.replyToken, WELCOME_MESSAGE);
-    
-        const followUserId = event.source?.userId;
-        if (followUserId) {
-            await client.pushMessage(followUserId, {
+        try {
+            await client.replyMessage(event.replyToken, {
                 type: 'text',
-                text: '📍 กรุณาเลือกจังหวัดของคุณ',
+                text: WELCOME_MESSAGE,
                 quickReply: {
                     items: buildQuickReplyItems(PROVINCE_OPTIONS)
                 }
             });
+        } catch (err) {
+            console.error('[FOLLOW_REPLY_ERROR]', err?.message);
         }
-    
-        return null;
+        return;
     }
-    let userId = null;
-    let sourceMessageId = null;
 
-    try {
-        if (event.type !== 'message' || event.message.type !== 'text') {
-            return null;
+    // -------- MESSAGE --------
+    if (event.type !== 'message') return;
+
+    const userId = event.source?.userId;
+    const message = event.message;
+
+    if (!userId || !message) return;
+
+    // รองรับเฉพาะข้อความตัวอักษร (ไม่เปลี่ยนพฤติกรรมเดิม)
+    if (message.type !== 'text') {
+        return;
+    }
+
+    const text = String(message.text || '').trim();
+    if (!text) return;
+
+    console.log('[INCOMING]', {
+        userId,
+        messageId: message.id,
+        text
+    });
+
+    // 1) Onboarding (เลือกจังหวัด / ประเภทเกษตร)
+    const consumedByOnboarding = await handleOnboardingStep(event, userId, text);
+    if (consumedByOnboarding) {
+        return;
+    }
+
+    // 2) Help
+    if (isHelpCommand(text)) {
+        await safeReply(event.replyToken, HELP_MESSAGE);
+        return;
+    }
+
+    // 3) Dashboard
+    if (isDashboardCommand(text)) {
+        await safeReply(event.replyToken, formatDashboardMessage(userId));
+        return;
+    }
+
+    // 4) Summary
+    if (isSummaryCommand(text)) {
+        try {
+            const summary = await getTodaySummaryAsync(userId);
+            await safeReply(event.replyToken, summary);
+        } catch (summaryError) {
+            console.error('[SUMMARY_ERROR]', summaryError?.message);
+            await safeReply(event.replyToken, '⚠️ ไม่สามารถดึงสรุปได้ในขณะนี้ กรุณาลองใหม่ภายหลัง');
         }
+        return;
+    }
 
-        sourceMessageId = event.message.id;
-        userId = event.source?.userId;
-        const text = event.message.text.trim();
-
-        if (isHelpCommand(text)) {
-            return safeReply(event.replyToken, HELP_MESSAGE);
-        }
-
-        if (isDashboardCommand(text)) {
-            return safeReply(event.replyToken, formatDashboardMessage(userId));
-        }
-
-        console.log('[INCOMING]', {
-            userId,
-            sourceMessageId,
-            text
-        });
-
-        if (!userId) {
-            console.error('❌ Missing userId in event source');
-            return null;
-        }
-        const onboardingHandled = await handleOnboardingStep(event, userId, text);
-        if (onboardingHandled) {
-            return null;
-        }
-        const isSummaryRequest = isSummaryCommand(text);
-
-        if (isAIInsightCommand(text)) {
+    // 5) AI Insight
+    if (isAIInsightCommand(text)) {
+        try {
             const allowed = await canUseAI(userId);
             if (!allowed) {
-                return safeReply(
-                    event.replyToken,
-                    "⚠️ วันนี้คุณใช้ AI วิเคราะห์ครบ 3 ครั้งแล้ว\n\nระบบจะรีเซ็ตโควตาอัตโนมัติหลังเวลา 00:00 น."
-                );
+                await safeReply(event.replyToken, '⚠️ คุณใช้สิทธิ์วิเคราะห์ด้วย AI วันนี้ครบแล้ว กรุณาลองใหม่พรุ่งนี้');
+                return;
             }
-        
-            const insight = await generateAIInsight(userId);
-        
-            return safeReply(event.replyToken, insight);
+            const profile = await getUserProfile(userId);
+            const categorySummary = await getTodayCategorySummary(userId);
+            const insightText = await generateAIInsight(profile, categorySummary);
+            await safeReply(event.replyToken, insightText);
+        } catch (aiError) {
+            console.error('[AI_ERROR]', aiError?.message);
+            await safeReply(event.replyToken, '⚠️ ไม่สามารถวิเคราะห์ด้วย AI ได้ในขณะนี้ กรุณาลองใหม่ภายหลัง');
+        }
+        return;
     }
-        const parsedList = parseMessage(text);
 
-        console.log('[PARSED]', parsedList);
+    // 6) Parse + Save + Reply
+    const parsedList = parseMessage(text);
 
-        if (parsedList.length > 0) {
-            await Promise.all(
-                parsedList.map((tx, index) =>
-                    saveTransaction(userId, tx, sourceMessageId, index)
-                )
-            );
-        }
+    if (!parsedList || parsedList.length === 0) {
+        await safeReply(event.replyToken, PARSE_ERROR_MESSAGE);
+        return;
+    }
 
-        if (parsedList.length > 0) {
-            console.log('[SAVED]', {
-                count: parsedList.length
-            });
-        }
-
-        let replyText = '';
-
-        if (parsedList.length === 0) {
-            if (!isSummaryRequest) {
-                replyText = PARSE_ERROR_MESSAGE;
-            }
-        } else {
-            replyText = formatSuccessReply(parsedList) + '\n\n';
-        }
-
-        if (isSummaryRequest) {
-            const summary = await getTodaySummaryAsync(userId);
-
-            console.log('[SUMMARY]', summary);
-
-            replyText += `📊 สรุปรายการวันนี้
-
-💰 รายรับทั้งหมด: ${formatAmount(summary.income)} บาท
-💸 รายจ่ายทั้งหมด: ${formatAmount(summary.expense)} บาท
-📦 คงเหลือ: ${formatAmount(summary.balance)} บาท${summary.balance < 0 ? ' ⚠️' : ''}`;
-        }
-
-        if (!replyText.trim()) {
-            replyText = PARSE_ERROR_MESSAGE;
-        }
-
-        return await safeReply(event.replyToken, replyText);
-
-    } catch (error) {
-        console.error('❌ handleEvent error:', error);
-
-        const isDuplicate =
-            error && error.message && error.message.includes('UNIQUE constraint failed');
-
-        if (isDuplicate) {
-            console.log('[DUPLICATE]', {
+    const savedList = [];
+    for (const tx of parsedList) {
+        try {
+            await saveTransaction(userId, tx);
+            savedList.push(tx);
+        } catch (saveError) {
+            console.error('[SAVE_ERROR]', {
                 userId,
-                sourceMessageId
+                tx,
+                message: saveError?.message
             });
-
-            try {
-                return await safeReply(event.replyToken, '⚠️ ข้อความนี้ถูกบันทึกไปแล้ว');
-            } catch (replyError) {
-                console.error('❌ duplicate reply error:', replyError);
-                return null;
-            }
-        }
-
-        if (isLineNetworkTimeout(error)) {
-            console.error('❌ LINE reply timeout - saved data may already exist');
-            return null;
-        }
-
-        try {
-            return await safeReply(event.replyToken, '⚠️ ระบบขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้ง');
-        } catch (replyError) {
-            console.error('❌ replyMessage error:', replyError);
-            return null;
         }
     }
+
+    if (savedList.length === 0) {
+        await safeReply(event.replyToken, '❌ ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่ภายหลัง');
+        return;
+    }
+
+    await safeReply(event.replyToken, formatSuccessReply(savedList));
 }
 
 // =====================
-// ROOT
+// SERVER BOOTSTRAP
 // =====================
-app.get('/', (req, res) => {
-    res.send('LINE Bot Ready');
-});
-
-// =====================
-// PRODUCTION API FOR DASHBOARD
-// =====================
-app.get('/api/recent', async (req, res) => {
-    try {
-        const { userId } = req.query;
-        const limit = Number(req.query.limit || 20);
-
-        if (!requireUserId(res, userId)) return;
-
-        const safeLimit = Math.min(Math.max(limit, 1), 100);
-        const rows = await getRecentTransactions(userId, safeLimit);
-
-        res.json({
-            ok: true,
-            count: rows.length,
-            items: rows
-        });
-    } catch (error) {
-        console.error('❌ /api/recent error:', error);
-        res.status(500).json({
-            ok: false,
-            error: 'Internal server error'
-        });
-    }
-});
-
-app.get('/api/category-summary', async (req, res) => {
-    try {
-        const { userId } = req.query;
-
-        if (!requireUserId(res, userId)) return;
-
-        const rows = await getTodayCategorySummary(userId);
-
-        res.json({
-            ok: true,
-            count: rows.length,
-            items: rows
-        });
-    } catch (error) {
-        console.error('❌ /api/category-summary error:', error);
-        res.status(500).json({
-            ok: false,
-            error: 'Internal server error'
-        });
-    }
-});
-
-app.get('/api/daily-summary', async (req, res) => {
-    try {
-        const { userId } = req.query;
-        const days = Number(req.query.days || 7);
-
-        if (!requireUserId(res, userId)) return;
-
-        const safeDays = Math.min(Math.max(days, 1), 90);
-        const rows = await getDailySummary(userId, safeDays);
-
-        res.json({
-            ok: true,
-            count: rows.length,
-            items: rows
-        });
-    } catch (error) {
-        console.error('❌ /api/daily-summary error:', error);
-        res.status(500).json({
-            ok: false,
-            error: 'Internal server error'
-        });
-    }
-});
-
-app.get('/api/monthly-summary', async (req, res) => {
-    try {
-        const { userId } = req.query;
-        const months = Number(req.query.months || 6);
-
-        if (!requireUserId(res, userId)) return;
-
-        const safeMonths = Math.min(Math.max(months, 1), 24);
-        const rows = await getMonthlySummary(userId, safeMonths);
-
-        res.json({
-            ok: true,
-            count: rows.length,
-            items: rows
-        });
-    } catch (error) {
-        console.error('❌ /api/monthly-summary error:', error);
-        res.status(500).json({
-            ok: false,
-            error: 'Internal server error'
-        });
-    }
-});
-
-// =====================
-// DEBUG API
-// =====================
-if (process.env.ENABLE_DEBUG === 'true') {
-    app.get('/debug/recent', async (req, res) => {
-        try {
-            const { userId } = req.query;
-            const limit = Number(req.query.limit || 20);
-
-            if (!requireUserId(res, userId)) return;
-
-            const safeLimit = Math.min(Math.max(limit, 1), 100);
-            const rows = await getRecentTransactions(userId, safeLimit);
-
-            res.json({
-                ok: true,
-                count: rows.length,
-                items: rows
-            });
-        } catch (error) {
-            console.error('❌ /debug/recent error:', error);
-            res.status(500).json({
-                ok: false,
-                error: 'Internal server error'
-            });
-        }
-    });
-
-    app.get('/debug/category-summary', async (req, res) => {
-        try {
-            const { userId } = req.query;
-
-            if (!requireUserId(res, userId)) return;
-
-            const rows = await getTodayCategorySummary(userId);
-
-            res.json({
-                ok: true,
-                count: rows.length,
-                items: rows
-            });
-        } catch (error) {
-            console.error('❌ /debug/category-summary error:', error);
-            res.status(500).json({
-                ok: false,
-                error: 'Internal server error'
-            });
-        }
-    });
-
-    app.get('/debug/daily-summary', async (req, res) => {
-        try {
-            const { userId } = req.query;
-            const days = Number(req.query.days || 7);
-
-            if (!requireUserId(res, userId)) return;
-
-            const safeDays = Math.min(Math.max(days, 1), 90);
-            const rows = await getDailySummary(userId, safeDays);
-
-            res.json({
-                ok: true,
-                count: rows.length,
-                items: rows
-            });
-        } catch (error) {
-            console.error('❌ /debug/daily-summary error:', error);
-            res.status(500).json({
-                ok: false,
-                error: 'Internal server error'
-            });
-        }
-    });
-    app.get('/debug/monthly-summary', async (req, res) => {
-        try {
-            const { userId } = req.query;
-            const months = Number(req.query.months || 6);
-
-            if (!requireUserId(res, userId)) return;
-
-            const safeMonths = Math.min(Math.max(months, 1), 24);
-            const rows = await getMonthlySummary(userId, safeMonths);
-
-            res.json({
-                ok: true,
-                count: rows.length,
-                items: rows
-            });
-        } catch (error) {
-            console.error('❌ /debug/monthly-summary error:', error);
-            res.status(500).json({
-                ok: false,
-                error: 'Internal server error'
-            });
-        }
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`🌾 Farmer bot listening on port ${PORT}`);
     });
 }
 
-app.get('/dashboard', (req, res) => {
-    res.send(renderDashboardPage(process.env.LIFF_ID));
-});
-
-dbReady
-    .then(() => {
-        app.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
-        });
-    })
-    .catch((error) => {
-        console.error('❌ Failed to start server due to database initialization error:', error);
-        process.exit(1);
-    });
+module.exports = app;
