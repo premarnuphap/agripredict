@@ -4,7 +4,7 @@ const {
     getRecentTransactions,
     getTodayCategorySummary,
     getDailySummary
-} = require('../db/database');
+} = require('../repositories/transactionRepository');
 
 let client = null;
 

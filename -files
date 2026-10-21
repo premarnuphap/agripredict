@@ -1,0 +1,1119 @@
+warning: in the working copy of 'index.js', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/index.js b/index.js[m
+[1mindex 0ecb643..deeb22f 100644[m
+[1m--- a/index.js[m
+[1m+++ b/index.js[m
+[36m@@ -1,1102 +1,27 @@[m
+[31m-﻿require('dotenv').config();[m
+[32m+[m[32mrequire('dotenv').config();[m
+ [m
+ const express = require('express');[m
+[31m-const line = require('@line/bot-sdk');[m
+[31m-const {[m
+[31m-    db,[m
+[31m-    getTodaySummary,[m
+[31m-    getRecentTransactions,[m
+[31m-    getTodayCategorySummary,[m
+[31m-    getDailySummary,[m
+[31m-    getMonthlySummary,[m
+[31m-    deleteTodayTransactionsByUser[m
+[31m-} = require('./db/database');[m
+[31m-const { generateAIInsight } = require('./services/ai');[m
+[31m-[m
+[31m-// =====================[m
+[31m-// SYSTEM MESSAGES[m
+[31m-// =====================[m
+[31m-const WELCOME_MESSAGE = `[m
+[31m-👋 ยินดีต้อนรับสู่ผู้ช่วยจัดการบัญชีของคุณ[m
+[31m-[m
+[31m-ระบบนี้ช่วยคุณ:[m
+[31m-✅ บันทึกรายรับ-รายจ่าย[m
+[31m-✅ ดูสรุปยอดได้ทันที[m
+[31m-✅ เปิด Dashboard ดูภาพรวมได้[m
+[31m-✅ ขอ AI ช่วยวิเคราะห์ได้[m
+[31m-[m
+[31m-━━━━━━━━━━━[m
+[31m-[m
+[31m-📌 วิธีใช้งาน[m
+[31m-1️⃣ พิมพ์รายการ เช่น[m
+[31m-- ซื้อปุ๋ย 500 บาท[m
+[31m-- ขายข้าวโพด 3000 บาท[m
+[31m-- จ้างคนมาทำงาน 800 บาท[m
+[31m-[m
+[31m-2️⃣ พิมพ์ "สรุป" เพื่อดูภาพรวมวันนี้[m
+[31m-3️⃣ พิมพ์ "วิเคราะห์" เพื่อขอคำแนะนำ[m
+[31m-4️⃣ พิมพ์ "แดชบอร์ด" เพื่อเปิด Dashboard[m
+[31m-[m
+[31m-❓ พิมพ์ "ช่วยเหลือ" เพื่อดูวิธีใช้อีกครั้ง[m
+[31m-`;[m
+[31m-[m
+[31m-const HELP_MESSAGE = `[m
+[31m-📘 วิธีใช้งานแบบสั้น[m
+[31m-[m
+[31m-1️⃣ บันทึกรายการ เช่น[m
+[31m-- ซื้อปุ๋ย 500 บาท[m
+[31m-- ขายผัก 3000 บาท[m
+[31m-- จ้างคนมาทำงาน 800 บาท[m
+[31m-[m
+[31m-2️⃣ ถ้ามีหลายรายการ ส่งหลายบรรทัดได้ เช่น[m
+[31m-ซื้อปุ๋ย 500 บาท[m
+[31m-ซื้ออาหารไก่ 300 บาท[m
+[31m-ขายไข่ 1200 บาท[m
+[31m-[m
+[31m-3️⃣ ดูสรุป[m
+[31m-พิมพ์ "สรุป"[m
+[31m-[m
+[31m-4️⃣ เปิด Dashboard[m
+[31m-พิมพ์ "แดชบอร์ด"[m
+[31m-[m
+[31m-5️⃣ ขอ AI วิเคราะห์[m
+[31m-พิมพ์ "วิเคราะห์"[m
+[31m-[m
+[31m-📌 แนะนำให้พิมพ์ชื่อรายการ + จำนวนเงินให้ชัดเจน[m
+[31m-`;[m
+[31m-[m
+[31m-const PARSE_ERROR_MESSAGE = `[m
+[31m-❌ ไม่พบจำนวนเงินในข้อความ[m
+[31m-[m
+[31m-ลองพิมพ์:[m
+[31m-- ซื้อปุ๋ย 500 บาท[m
+[31m-- ขายผัก ได้เงิน 3000 บาท[m
+[31m-[m
+[31m-📌 ถ้ามีตัวเลขหลายตัว เช่น "300 กิโล 5000 บาท"[m
+[31m-ระบบจะใช้ตัวเลขที่เป็น "บาท"[m
+[31m-`;[m
+[31m-[m
+[31m-// =====================[m
+[31m-// COMMAND HELPERS[m
+[31m-// =====================[m
+[31m-function isHelpCommand(text) {[m
+[31m-    return ['ช่วยเหลือ', 'เมนู', 'help'].includes(text.toLowerCase());[m
+[31m-}[m
+[31m-[m
+[31m-function isSummaryCommand(text) {[m
+[31m-    return text.includes('สรุป');[m
+[31m-}[m
+[31m-[m
+[31m-function isDashboardCommand(text) {[m
+[31m-    return ['แดชบอร์ด', 'dashboard'].includes(text.toLowerCase());[m
+[31m-}[m
+[31m-[m
+[31m-function getDashboardUrl(userId) {[m
+[31m-    return `${process.env.BASE_URL}/dashboard`;[m
+[31m-}[m
+[31m-[m
+[31m-function formatDashboardMessage(userId) {[m
+[31m-    const url = getDashboardUrl(userId);[m
+[31m-    return `📊 เปิด Dashboard:\n${url}`;[m
+[31m-}[m
+[31m-[m
+[31m-function isAIInsightCommand(text) {[m
+[31m-    const t = text.toLowerCase().trim();[m
+[31m-[m
+[31m-    return ([m
+[31m-        t === 'วิเคราะห์' ||[m
+[31m-        t === 'ขอคำแนะนำ' ||[m
+[31m-        t === 'รายจ่ายเป็นยังไงบ้าง' ||[m
+[31m-        t === 'ช่วยดูการเงินหน่อย' ||[m
+[31m-        t === 'ช่วยดูการเงิน' ||[m
+[31m-        t === 'insight'[m
+[31m-    );[m
+[31m-}[m
+[31m-[m
+[31m-const { renderDashboardPage } = require('./views/dashboard');[m
+[32m+[m[32mconst { registerWebhookRoute } = require('./routes/webhook');[m
+[32m+[m[32mconst { registerDashboardRoutes } = require('./routes/dashboard');[m
+ [m
+ const app = express();[m
+[31m-const config = {[m
+[31m-    channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,[m
+[31m-    channelSecret: process.env.LINE_CHANNEL_SECRET,[m
+[31m-    httpConfig: {[m
+[31m-        timeout: 10000 // 10 วินาที[m
+[31m-    }[m
+[31m-};[m
+[31m-[m
+[31m-if (!process.env.LINE_CHANNEL_ACCESS_TOKEN || !process.env.LINE_CHANNEL_SECRET) {[m
+[31m-    console.error('❌ Missing LINE env variables');[m
+[31m-    process.exit(1);[m
+[31m-}[m
+[31m-[m
+[31m-const client = new line.Client(config);[m
+ const PORT = process.env.PORT || 3000;[m
+ [m
+[31m-// =====================[m
+[31m-// CATEGORY MAP[m
+[31m-// =====================[m
+[31m-const CATEGORY_RULES = [[m
+[31m-    {[m
+[31m-        name: 'ต้นทุนผันแปร',[m
+[31m-        priority: 1,[m
+[31m-        triggers: ['ซื้อ', 'เติม', 'ใส่', 'ใช้', 'ลง', 'ทำ', 'เอาเข้า', 'ใช้ไป', 'หมดไป'],[m
+[31m-        keywords: [[m
+[31m-            'เมล็ด', 'เมล็ดพันธุ์', 'เมล็ดผัก', 'เมล็ดข้าว',[m
+[31m-            'พันธุ์', 'พันธุ์พืช', 'พันธุ์สัตว์',[m
+[31m-            'กล้า', 'ต้นกล้า', 'เพาะกล้า', 'ถาดเพาะ',[m
+[31m-            'ลูกไก่', 'ลูกเป็ด', 'ลูกหมู', 'ลูกปลา', 'ลูกกุ้ง',[m
+[31m-            'แม่พันธุ์', 'พ่อพันธุ์',[m
+[31m-[m
+[31m-            'ปุ๋ย', 'ปุย', 'ปุ๋ยเคมี', 'ปุ๋ยคอก', 'ปุ๋ยอินทรีย์', 'ปุ๋ยหมัก',[m
+[31m-            'ยูเรีย', '151515', '161616', '4600',[m
+[31m-            'โดโลไมท์', 'ปูนขาว', 'ยิปซัม',[m
+[31m-            'ขี้วัว', 'ขี้ไก่', 'ขี้หมู', 'มูลสัตว์',[m
+[31m-            'แกลบ', 'แกลบดิบ', 'แกลบเผา', 'ฟาง', 'ขุยมะพร้าว',[m
+[31m-            'ดิน', 'ดินปลูก', 'ปรับดิน', 'บำรุงดิน',[m
+[31m-[m
+[31m-            'ยา', 'ยาแมลง', 'ยาหญ้า', 'ยาหนอน', 'ยาเชื้อ',[m
+[31m-            'ยาฆ่าแมลง', 'ยาฆ่าหญ้า', 'ยาฆ่าเชื้อ',[m
+[31m-            'พ่นยา', 'ฉีดยา',[m
+[31m-            'สารเคมี', 'เคมี', 'ฮอร์โมน',[m
+[31m-            'วัคซีน', 'ยาฉีด', 'เวชภัณฑ์',[m
+[31m-            'ยาปฏิชีวนะ', 'ยาบำรุง', 'วิตามิน',[m
+[31m-[m
+[31m-            'อาหารสัตว์', 'อาหารไก่', 'อาหารหมู', 'อาหารปลา', 'อาหารกุ้ง',[m
+[31m-            'อาหารเม็ด', 'อาหารผง', 'อาหารข้น',[m
+[31m-            'รำ', 'รำละเอียด', 'รำหยาบ',[m
+[31m-            'ปลายข้าว', 'ข้าวโพด', 'กากถั่ว', 'กากมัน',[m
+[31m-            'หัวอาหาร', 'อาหารสำเร็จรูป',[m
+[31m-[m
+[31m-            'น้ำ', 'น้ำประปา', 'เติมน้ำ', 'สูบน้ำ', 'รดน้ำ',[m
+[31m-            'ไฟ', 'ไฟฟ้า',[m
+[31m-            'ปั๊ม', 'ปั๊มน้ำ', 'เครื่องสูบ',[m
+[31m-[m
+[31m-            'น้ำมัน', 'เติมน้ำมัน', 'น้ำมันเครื่อง', 'น้ำมันดีเซล', 'เบนซิน',[m
+[31m-            'น้ำมันเครื่องสูบ', 'น้ำมันรถไถ', 'น้ำมันเครื่องตัดหญ้า',[m
+[31m-[m
+[31m-            'ขี้เลื่อย', 'รองพื้นคอก', 'แกลบรองพื้น',[m
+[31m-            'ถุงอาหาร', 'ถุงปุ๋ย', 'เชือก', 'พลาสติกคลุมดิน'[m
+[31m-        ],[m
+[31m-        patterns: [[m
+[31m-            /ซื้อ.*(เมล็ด|พันธุ์|ปุ๋ย|ยา|อาหาร|น้ำมัน)/,[m
+[31m-            /เติม.*(น้ำ|น้ำมัน|อาหาร)/,[m
+[31m-            /ใส่.*(ปุ๋ย|ยา)/,[m
+[31m-            /(พ่น|ฉีด).*(ยา|เคมี)/,[m
+[31m-            /ให้.*อาหาร/[m
+[31m-        ][m
+[31m-    },[m
+[31m-    {[m
+[31m-        name: 'ค่าแรง',[m
+[31m-        priority: 2,[m
+[31m-        triggers: ['จ้าง', 'ใช้แรง', 'ให้คน', 'ทำ'],[m
+[31m-        keywords: [[m
+[31m-            'จ้าง', 'จ้างคน', 'จ้างแรงงาน', 'แรงงาน', 'คนงาน', 'ลูกน้อง',[m
+[31m-            'ทำเอง', 'เจ้าของทำ', 'แรงตัวเอง',[m
+[31m-            'รายวัน', 'รายชั่วโมง', 'เหมา',[m
+[31m-            'จ้างปลูก', 'จ้างหว่าน', 'จ้างเกี่ยว', 'จ้างเก็บ',[m
+[31m-            'จ้างจับหมู', 'จ้างจับไก่',[m
+[31m-            'จ้างฉีด', 'จ้างพ่น',[m
+[31m-            'ตัดหญ้า', 'ถอนหญ้า', 'ขุดดิน',[m
+[31m-            'ล้างคอก', 'ทำความสะอาด'[m
+[31m-        ],[m
+[31m-        patterns: [[m
+[31m-            /จ้าง.*/,[m
+[31m-            /(ตัด|ถอน|ขุด|ล้าง|เก็บ).*(คน|จ้าง)/,[m
+[31m-            /ทำเอง/[m
+[31m-        ][m
+[31m-    },[m
+[31m-    {[m
+[31m-        name: 'ค่าซ่อม / บำรุงรักษา',[m
+[31m-        priority: 3,[m
+[31m-        triggers: ['ซ่อม', 'บำรุง', 'เปลี่ยน', 'แก้', 'ล้าง'],[m
+[31m-        keywords: [[m
+[31m-            'ซ่อม', 'ซ่อมแซม', 'ค่าซ่อม',[m
+[31m-            'บำรุง', 'บำรุงรักษา',[m
+[31m-            'อะไหล่', 'เปลี่ยนอะไหล่',[m
+[31m-            'เครื่อง', 'เครื่องมือ', 'เครื่องสูบ', 'เครื่องตัดหญ้า',[m
+[31m-            'รถไถ', 'รถ', 'ปั๊ม', 'ปั๊มน้ำ',[m
+[31m-            'ท่อ', 'ระบบน้ำ', 'ระบบไฟ',[m
+[31m-            'เครื่องหยอด', 'เครื่องหยอดข้าวโพด',[m
+[31m-            'ล้างเครื่อง', 'ล้างปั๊ม'[m
+[31m-        ],[m
+[31m-        patterns: [[m
+[31m-            /(ซ่อม|ซ่อมแซม).*/,[m
+[31m-            /(บำรุง|บำรุงรักษา).*/,[m
+[31m-            /ค่า(ซ่อม|เปลี่ยนอะไหล่).*/,[m
+[31m-            /(เปลี่ยนอะไหล่|เปลี่ยนยาง|เปลี่ยนน้ำมันเครื่อง).*/[m
+[31m-        ][m
+[31m-    },[m
+[31m-    {[m
+[31m-        name: 'ต้นทุนคงที่',[m
+[31m-        priority: 3,[m
+[31m-        triggers: ['ซื้อ', 'ลงทุน', 'สร้าง', 'ทำ', 'ติดตั้ง'],[m
+[31m-        keywords: [[m
+[31m-            'เครื่อง', 'เครื่องมือ', 'อุปกรณ์',[m
+[31m-            'เครื่องพ่น', 'เครื่องตัดหญ้า', 'เครื่องสูบ', 'เครื่องไถ',[m
+[31m-            'เครื่องบด', 'เครื่องผสมอาหาร',[m
+[31m-            'รถไถ', 'รถเกี่ยว',[m
+[31m-[m
+[31m-            'คอก', 'กรง', 'เล้าไก่', 'โรงเรือน',[m
+[31m-            'โรงเรือนหมู', 'โรงเรือนไก่',[m
+[31m-            'แทงค์น้ำ', 'ถังน้ำใหญ่',[m
+[31m-[m
+[31m-            'ระบบน้ำ', 'ระบบไฟ',[m
+[31m-            'ท่อ', 'สปริงเกอร์', 'น้ำหยด',[m
+[31m-[m
+[31m-            'ติดตั้ง', 'ต่อเติม', 'ทำหลังคา', 'ทำพื้น'[m
+[31m-        ],[m
+[31m-        patterns: [[m
+[31m-            /ซื้อ.*(เครื่อง|อุปกรณ์|รถ|คอก|โรงเรือน)/,[m
+[31m-            /สร้าง.*(คอก|เล้า|โรงเรือน)/,[m
+[31m-            /ติดตั้ง.*ระบบ/[m
+[31m-        ][m
+[31m-    },[m
+[31m-    {[m
+[31m-        name: 'ค่าใช้จ่ายทั่วไป',[m
+[31m-        priority: 4,[m
+[31m-        triggers: ['ใช้', 'จ่าย', 'ทั่วไป', 'เบ็ดเตล็ด'],[m
+[31m-        keywords: [[m
+[31m-            'โทร', 'โทรศัพท์', 'เติมเงิน',[m
+[31m-            'เน็ต', 'อินเทอร์เน็ต',[m
+[31m-            'เดินทาง', 'ใช้รถ',[m
+[31m-            'กิน', 'อาหารคน',[m
+[31m-            'ของใช้', 'ของจุกจิก',[m
+[31m-            'ขน', 'ขนส่ง', 'ส่งของ',[m
+[31m-            'รถขน', 'รถบรรทุก',[m
+[31m-            'ตลาด', 'แผง', 'เช่าที่', 'เช่าร้าน',[m
+[31m-            'แพ็ค', 'บรรจุ', 'ถุง', 'กล่อง', 'ลัง',[m
+[31m-            'โพสต์ขาย', 'โปรโมท', 'โฆษณา'[m
+[31m-        ],[m
+[31m-        patterns: [[m
+[31m-            /(ส่ง|ขน).*(ของ)/,[m
+[31m-            /(แพ็ค|บรรจุ).*(ของ)/,[m
+[31m-            /(โพสต์|โปรโมท)/[m
+[31m-        ][m
+[31m-    },[m
+[31m-    {[m
+[31m-        name: 'การเงิน / หนี้',[m
+[31m-        priority: 5,[m
+[31m-        triggers: ['กู้', 'ยืม', 'จ่าย', 'ผ่อน', 'คืน', 'โอน'],[m
+[31m-        keywords: [[m
+[31m-            'กู้', 'กู้เงิน', 'เงินกู้', 'ยืมเงิน',[m
+[31m-            'ธนาคาร', 'ธกส', 'แบงค์',[m
+[31m-            'จ่ายหนี้', 'ใช้หนี้', 'คืนหนี้', 'ปิดหนี้',[m
+[31m-            'ผ่อน', 'งวด',[m
+[31m-            'ดอก', 'ดอกเบี้ย',[m
+[31m-            'เงินต้น',[m
+[31m-            'ค่าปรับ', 'ค่าธรรมเนียม',[m
+[31m-            'โอนเงิน', 'ส่งเงิน',[m
+[31m-            'หนี้นอก', 'ดอกนอก'[m
+[31m-        ],[m
+[31m-        patterns: [[m
+[31m-            /กู้.*/,[m
+[31m-            /ผ่อน.*/,[m
+[31m-            /จ่าย.*(หนี้|งวด|ดอก)/,[m
+[31m-            /โอน.*เงิน/[m
+[31m-        ][m
+[31m-    }[m
+[31m-];[m
+[31m-[m
+[31m-// =====================[m
+[31m-// WEBHOOK[m
+[31m-// =====================[m
+[31m-app.post('/webhook', line.middleware(config), (req, res) => {[m
+[31m-    const events = req.body.events || [];[m
+[31m-[m
+[31m-    // ตอบ LINE ให้เร็วที่สุดก่อน[m
+[31m-    res.status(200).end();[m
+[31m-[m
+[31m-    Promise.all([m
+[31m-        events.map(async (event) => {[m
+[31m-            try {[m
+[31m-                await handleEvent(event);[m
+[31m-            } catch (eventError) {[m
+[31m-                console.error('❌ event processing error:', eventError);[m
+[31m-            }[m
+[31m-        })[m
+[31m-    ).catch((error) => {[m
+[31m-        console.error('❌ webhook background error:', error);[m
+[31m-    });[m
+[31m-});[m
+[31m-[m
+[32m+[m[32m// Route order is intentionally preserved: LINE verification handles the webhook[m
+[32m+[m[32m// before JSON parsing is enabled for the dashboard endpoints.[m
+[32m+[m[32mregisterWebhookRoute(app);[m
+ app.use(express.json());[m
+ [m
+[31m-[m
+[31m-app.post('/api/reset-today', async (req, res) => {[m
+[31m-    try {[m
+[31m-        const { userId } = req.body || {};[m
+[31m-[m
+[31m-        if (!requireUserId(res, userId)) return;[m
+[31m-[m
+[31m-        const result = deleteTodayTransactionsByUser(userId);[m
+[31m-[m
+[31m-        res.json({[m
+[31m-            ok: true,[m
+[31m-            deletedCount: result.deletedCount[m
+[31m-        });[m
+[31m-[m
+[31m-        if (result.deletedCount > 0) {[m
+[31m-            await safePush([m
+[31m-                userId,[m
+[31m-                `✅ รีเซ็ตข้อมูลวันนี้เรียบร้อยแล้ว\nลบข้อมูลจำนวน ${result.deletedCount} รายการจาก Dashboard`[m
+[31m-            );[m
+[31m-        } else {[m
+[31m-            await safePush([m
+[31m-                userId,[m
+[31m-                'ℹ️ รีเซ็ตข้อมูลวันนี้เรียบร้อยแล้ว\nแต่วันนี้ยังไม่มีข้อมูลให้ลบ'[m
+[31m-            );[m
+[31m-        }[m
+[31m-    } catch (error) {[m
+[31m-        console.error('❌ /api/reset-today error:', error);[m
+[31m-        res.status(500).json({[m
+[31m-            ok: false,[m
+[31m-            error: 'Internal server error'[m
+[31m-        });[m
+[31m-    }[m
+[31m-});[m
+[31m-[m
+[31m-// =====================[m
+[31m-// CLASSIFY CATEGORY[m
+[31m-// =====================[m
+[31m-function classifyCategoryOverride(text) {[m
+[31m-    const input = String(text || '').trim().toLowerCase();[m
+[31m-[m
+[31m-    if (!input) return null;[m
+[31m-[m
+[31m-    // 1) ค่าแรง ต้องชนะก่อน ถ้ามีคำว่าจ้าง/คน/แรงงาน[m
+[31m-    if ([m
+[31m-        /(จ้าง|ค่าจ้าง|ค่าแรง|แรงงาน|คนงาน|ลูกน้อง)/.test(input) &&[m
+[31m-        !/(ขาย|รับเงิน|ได้เงิน)/.test(input)[m
+[31m-    ) {[m
+[31m-        return 'ค่าแรง';[m
+[31m-    }[m
+[31m-[m
+[31m-    // 2) ค่าซ่อม / บำรุงรักษา[m
+[31m-    if ([m
+[31m-        /(ซ่อม|ซ่อมแซม|ค่าซ่อม|บำรุง|บำรุงรักษา|อะไหล่|เปลี่ยนอะไหล่|repair)/.test(input)[m
+[31m-    ) {[m
+[31m-        return 'ค่าซ่อม / บำรุงรักษา';[m
+[31m-    }[m
+[31m-[m
+[31m-    return null;[m
+[31m-}[m
+[31m-[m
+[31m-function classifyCategory(text) {[m
+[31m-    const input = String(text || '').trim().toLowerCase();[m
+[31m-[m
+[31m-    if (!input) return 'อื่นๆ';[m
+[31m-[m
+[31m-    const overrideCategory = classifyCategoryOverride(input);[m
+[31m-    if (overrideCategory) {[m
+[31m-        return overrideCategory;[m
+[31m-    }[m
+[31m-[m
+[31m-    for (const rule of CATEGORY_RULES) {[m
+[31m-        const matchedPattern = (rule.patterns || []).some((pattern) => pattern.test(input));[m
+[31m-        if (matchedPattern) {[m
+[31m-            return rule.name;[m
+[31m-        }[m
+[31m-    }[m
+[31m-[m
+[31m-    for (const rule of CATEGORY_RULES) {[m
+[31m-        const hasTrigger = (rule.triggers || []).some((trigger) => input.includes(trigger));[m
+[31m-        const hasKeyword = (rule.keywords || []).some((keyword) => input.includes(keyword));[m
+[31m-[m
+[31m-        if (hasTrigger && hasKeyword) {[m
+[31m-            return rule.name;[m
+[31m-        }[m
+[31m-    }[m
+[31m-[m
+[31m-    for (const rule of CATEGORY_RULES) {[m
+[31m-        const hasKeyword = (rule.keywords || []).some((keyword) => input.includes(keyword));[m
+[31m-        if (hasKeyword) {[m
+[31m-            return rule.name;[m
+[31m-        }[m
+[31m-    }[m
+[31m-[m
+[31m-    return 'อื่นๆ';[m
+[31m-}[m
+[31m-[m
+[31m-// =====================[m
+[31m-// PARSE MESSAGE HELPERS[m
+[31m-// =====================[m
+[31m-function normalizeText(text) {[m
+[31m-    return text[m
+[31m-        .toLowerCase()[m
+[31m-        .replace(/\s+/g, ' ')[m
+[31m-        .replace(/บาทถ้วน/g, ' บาท')[m
+[31m-        .replace(/บาท/g, ' บาท ')[m
+[31m-        .replace(/,\s*/g, ',')[m
+[31m-        .trim();[m
+[31m-}[m
+[31m-[m
+[31m-function detectType(text) {[m
+[31m-    const input = String(text || '').trim().toLowerCase();[m
+[31m-[m
+[31m-    if (!input) return null;[m
+[31m-[m
+[31m-    if (/(ขาย|รายรับ|รับมา|ได้เงิน|ได้มา|โอนเข้า|เงินเข้า|รับเงิน)/.test(input)) {[m
+[31m-        return 'income';[m
+[31m-    }[m
+[31m-[m
+[31m-    if (/(ซื้อ|รายจ่าย|จ่าย|ค่า|ค่าส่ง|โอนออก|เสีย|หมดไป|ผ่อน|ชำระ|ซ่อม|บำรุง|เปลี่ยนอะไหล่)/.test(input)) {[m
+[31m-        return 'expense';[m
+[31m-    }[m
+[31m-[m
+[31m-    return null;[m
+[31m-}[m
+[31m-[m
+[31m-function cleanItemText(text) {[m
+[31m-    return String(text || '')[m
+[31m-        .replace(/(รายรับ|รายจ่าย|บาทถ้วน|บาท|แล้ว|และ|กับ|จากนั้น|เอาไป|ได้เงิน|ได้มา|รับมา)/g, ' ')[m
+[31m-        .replace(/\s+/g, ' ')[m
+[31m-        .trim();[m
+[31m-}[m
+[31m-[m
+[31m-const NON_MONEY_UNITS = [[m
+[31m-    'กิโล', 'กก', 'ก.ก.', 'กิโลกรัม', 'โล',[m
+[31m-    'ตัว', 'ชิ้น', 'ถุง', 'ลัง', 'ฟอง', 'แพ็ค', 'แพก',[m
+[31m-    'ไร่', 'งาน', 'เมตร', 'ม.', 'ลิตร', 'ตัน', 'กระสอบ',[m
+[31m-    'ใบ', 'ขวด', 'กล่อง', 'ชุด', 'คัน', 'เครื่อง'[m
+[31m-];[m
+[31m-[m
+[31m-function escapeRegex(text) {[m
+[31m-    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');[m
+[31m-}[m
+[31m-[m
+[31m-function isQuantityUnitAfterNumber(text, amountEnd) {[m
+[31m-    const tail = text.slice(amountEnd, amountEnd + 20).trim();[m
+[31m-[m
+[31m-    return NON_MONEY_UNITS.some((unit) => {[m
+[31m-        const re = new RegExp(`^${escapeRegex(unit)}(?:\\b|\\s|$)`);[m
+[31m-        return re.test(tail);[m
+[31m-    });[m
+[31m-}[m
+[31m-[m
+[31m-function scoreAmountCandidate(fullText, amountStart, amountEnd, amount) {[m
+[31m-    let score = 0;[m
+[31m-[m
+[31m-    const left = fullText.slice(Math.max(0, amountStart - 30), amountStart);[m
+[31m-    const right = fullText.slice(amountEnd, Math.min(fullText.length, amountEnd + 30));[m
+[31m-    const around = `${left} ${right}`;[m
+[31m-[m
+[31m-    if (/^(\s*)บาท\b/.test(right)) score += 100;[m
+[31m-    if (/(ได้เงิน|ได้มา|รับมา|รับเงิน|ขาย)/.test(left)) score += 40;[m
+[31m-    if (/(ซื้อ|จ่าย|ค่าส่ง|ค่า|ผ่อน|ชำระ|เติม)/.test(left)) score += 25;[m
+[31m-[m
+[31m-    if (isQuantityUnitAfterNumber(fullText, amountEnd)) score -= 120;[m
+[31m-[m
+[31m-    if (amount < 1000 && !/บาท/.test(around) && !/(ได้เงิน|ได้มา|รับมา|รับเงิน|ขาย|ซื้อ|จ่าย|ค่า|เติม|ผ่อน)/.test(left)) {[m
+[31m-        score -= 20;[m
+[31m-    }[m
+[31m-[m
+[31m-    return score;[m
+[31m-}[m
+[31m-[m
+[31m-function findBestAmountMatch(text) {[m
+[31m-    const amountRegex = /(\d[\d,]*(?:\.\d+)?)/g;[m
+[31m-    const matches = [...text.matchAll(amountRegex)];[m
+[31m-[m
+[31m-    if (matches.length === 0) return null;[m
+[31m-[m
+[31m-    const candidates = matches[m
+[31m-        .map((match) => {[m
+[31m-            const amountRaw = match[1];[m
+[31m-            const amount = parseFloat(amountRaw.replace(/,/g, ''));[m
+[31m-            const start = match.index;[m
+[31m-            const end = start + amountRaw.length;[m
+[31m-[m
+[31m-            if (!amount || amount <= 0) return null;[m
+[31m-[m
+[31m-            return {[m
+[31m-                match,[m
+[31m-                amountRaw,[m
+[31m-                amount,[m
+[31m-                start,[m
+[31m-                end,[m
+[31m-                score: scoreAmountCandidate(text, start, end, amount)[m
+[31m-            };[m
+[31m-        })[m
+[31m-        .filter(Boolean)[m
+[31m-        .sort((a, b) => b.score - a.score || b.amount - a.amount);[m
+[31m-[m
+[31m-    if (candidates.length === 0) return null;[m
+[31m-[m
+[31m-    const best = candidates[0];[m
+[31m-[m
+[31m-    if (best.score < 0) {[m
+[31m-        return null;[m
+[31m-    }[m
+[31m-[m
+[31m-    return best;[m
+[31m-}[m
+[31m-[m
+[31m-function formatAmount(amount) {[m
+[31m-    return Number(amount || 0).toLocaleString('en-US');[m
+[31m-}[m
+[31m-[m
+[31m-function formatTypeLabel(type) {[m
+[31m-    if (type === 'income') return 'รายรับ';[m
+[31m-    if (type === 'expense') return 'รายจ่าย';[m
+[31m-    return '-';[m
+[31m-}[m
+[31m-[m
+[31m-function formatTransactionLine(tx) {[m
+[31m-    return `- ${tx.note || 'ไม่ระบุ'} | ${formatTypeLabel(tx.type)} | ${formatAmount(tx.amount)} บาท | ${tx.category || 'อื่นๆ'}`;[m
+[31m-}[m
+[31m-[m
+[31m-function formatSuccessReply(parsedList) {[m
+[31m-    if (!parsedList || parsedList.length === 0) {[m
+[31m-        return PARSE_ERROR_MESSAGE;[m
+[31m-    }[m
+[31m-[m
+[31m-    let totalIncome = 0;[m
+[31m-    let totalExpense = 0;[m
+[31m-[m
+[31m-    parsedList.forEach((tx) => {[m
+[31m-        if (tx.type === 'income') totalIncome += tx.amount;[m
+[31m-        if (tx.type === 'expense') totalExpense += tx.amount;[m
+[31m-    });[m
+[31m-[m
+[31m-    let message = `✅ บันทึกเรียบร้อย ${parsedList.length} รายการ\n\n📋 รายการที่บันทึก:\n`;[m
+[31m-[m
+[31m-    message += parsedList[m
+[31m-        .slice(0, 5)[m
+[31m-        .map(formatTransactionLine)[m
+[31m-        .join('\n');[m
+[31m-[m
+[31m-    if (parsedList.length > 5) {[m
+[31m-        message += `\n... และอีก ${parsedList.length - 5} รายการ`;[m
+[31m-    }[m
+[31m-[m
+[31m-    message += '\n\n📊 สรุปจากข้อความนี้\n';[m
+[31m-[m
+[31m-    if (totalIncome > 0) {[m
+[31m-        message += `📈 รายรับ: ${formatAmount(totalIncome)} บาท\n`;[m
+[31m-    }[m
+[31m-[m
+[31m-    if (totalExpense > 0) {[m
+[31m-        message += `📉 รายจ่าย: ${formatAmount(totalExpense)} บาท\n`;[m
+[31m-    }[m
+[31m-[m
+[31m-    message += '\nพิมพ์ "สรุป" เพื่อดูภาพรวมวันนี้';[m
+[31m-[m
+[31m-    return message;[m
+[31m-}[m
+[31m-[m
+[31m-function requireUserId(res, userId) {[m
+[31m-    if (!userId) {[m
+[31m-        res.status(400).json({[m
+[31m-            error: 'Missing userId'[m
+[31m-        });[m
+[31m-        return false;[m
+[31m-    }[m
+[31m-    return true;[m
+[31m-}[m
+[31m-[m
+[31m-function isLineNetworkTimeout(error) {[m
+[31m-    return ([m
+[31m-        error &&[m
+[31m-        ([m
+[31m-            error.code === 'ETIMEDOUT' ||[m
+[31m-            error.code === 'ECONNRESET' ||[m
+[31m-            error.code === 'ECONNABORTED' ||[m
+[31m-            (error.message && error.message.includes('ETIMEDOUT'))[m
+[31m-        )[m
+[31m-    );[m
+[31m-}[m
+[31m-[m
+[31m-function parseMessage(text) {[m
+[31m-    const normalized = normalizeText(text);[m
+[31m-[m
+[31m-    const cleaned = normalized[m
+[31m-        .replace(/สรุปวันนี้|สรุปรายวัน|สรุป/g, ' ')[m
+[31m-        .trim();[m
+[31m-[m
+[31m-    if (!cleaned) {[m
+[31m-        return [];[m
+[31m-    }[m
+[31m-[m
+[31m-    const lines = cleaned[m
+[31m-        .split('\n')[m
+[31m-        .map(line => line.trim())[m
+[31m-        .filter(Boolean);[m
+[31m-[m
+[31m-    const inputLines = lines.length > 0 ? lines : [cleaned];[m
+[31m-    const results = [];[m
+[31m-    let lastType = null;[m
+[31m-[m
+[31m-    for (const line of inputLines) {[m
+[31m-        const best = findBestAmountMatch(line);[m
+[31m-[m
+[31m-        if (!best) {[m
+[31m-            continue;[m
+[31m-        }[m
+[31m-[m
+[31m-        const leftContext = line.slice(0, best.start).trim();[m
+[31m-[m
+[31m-        let type = detectType(leftContext);[m
+[31m-[m
+[31m-        if (!type) {[m
+[31m-            type = detectType(line);[m
+[31m-        }[m
+[31m-[m
+[31m-        if (!type && lastType) {[m
+[31m-            type = lastType;[m
+[31m-        }[m
+[31m-[m
+[31m-        if (!type && /(ซื้อ|ขาย|จ่าย|ได้เงิน|ได้มา|รับมา|รับเงิน|ค่า|เติม|ผ่อน|จ้าง)/.test(line)) {[m
+[31m-            type = /(ขาย|ได้เงิน|ได้มา|รับมา|รับเงิน)/.test(line) ? 'income' : 'expense';[m
+[31m-        }[m
+[31m-[m
+[31m-        if (!type) {[m
+[31m-            continue;[m
+[31m-        }[m
+[31m-[m
+[31m-        if (type) {[m
+[31m-            lastType = type;[m
+[31m-        }[m
+[31m-[m
+[31m-        let note = cleanItemText(leftContext);[m
+[31m-        note = note.replace(/(.+)\s+\1$/, '$1');[m
+[31m-        if (!note) {[m
+[31m-            note = cleanItemText(line.replace(best.amountRaw, ' '));[m
+[31m-        }[m
+[31m-[m
+[31m-        note = note[m
+[31m-            .replace(/\s+/g, ' ')[m
+[31m-            .trim();[m
+[31m-[m
+[31m-        const category = classifyCategory(note || line || 'อื่นๆ');[m
+[31m-[m
+[31m-        results.push({[m
+[31m-            type,[m
+[31m-            amount: best.amount,[m
+[31m-            category,[m
+[31m-            note: note || 'ไม่ระบุ'[m
+[31m-        });[m
+[31m-    }[m
+[31m-[m
+[31m-    return results.filter(tx => tx.type && tx.amount > 0);[m
+[31m-}[m
+[31m-[m
+[31m-// =====================[m
+[31m-// SAVE TRANSACTION[m
+[31m-// =====================[m
+[31m-function saveTransaction(userId, tx, sourceMessageId, sourceTxnIndex) {[m
+[31m-    const { type, amount, category, note } = tx;[m
+[31m-[m
+[31m-    if (!userId || !type || !amount || amount <= 0) {[m
+[31m-        return Promise.reject(new Error('Invalid transaction data'));[m
+[31m-    }[m
+[31m-[m
+[31m-    if (!sourceMessageId && sourceMessageId !== null) {[m
+[31m-        return Promise.reject(new Error('Missing sourceMessageId'));[m
+[31m-    }[m
+[31m-[m
+[31m-    return new Promise((resolve, reject) => {[m
+[31m-        try {[m
+[31m-            const stmt = db.prepare(`[m
+[31m-                INSERT INTO transactions ([m
+[31m-                    userId,[m
+[31m-                    type,[m
+[31m-                    amount,[m
+[31m-                    category,[m
+[31m-                    note,[m
+[31m-                    sourceMessageId,[m
+[31m-                    sourceTxnIndex[m
+[31m-                )[m
+[31m-                VALUES (?, ?, ?, ?, ?, ?, ?)[m
+[31m-            `);[m
+[31m-[m
+[31m-            const result = stmt.run([m
+[31m-                userId,[m
+[31m-                type,[m
+[31m-                amount,[m
+[31m-                category,[m
+[31m-                note || 'ไม่ระบุ',[m
+[31m-                sourceMessageId,[m
+[31m-                sourceTxnIndex[m
+[31m-            );[m
+[31m-[m
+[31m-            resolve({[m
+[31m-                id: result.lastInsertRowid,[m
+[31m-                changes: result.changes[m
+[31m-            });[m
+[31m-        } catch (err) {[m
+[31m-            reject(err);[m
+[31m-        }[m
+[31m-    });[m
+[31m-}[m
+[31m-[m
+[31m-// =====================[m
+[31m-// SUMMARY[m
+[31m-// =====================[m
+[31m-function getTodaySummaryAsync(userId) {[m
+[31m-    return Promise.resolve(getTodaySummary(userId));[m
+[31m-}[m
+[31m-[m
+[31m-async function safeReply(replyToken, text) {[m
+[31m-    return await client.replyMessage(replyToken, {[m
+[31m-        type: 'text',[m
+[31m-        text[m
+[31m-    });[m
+[31m-}[m
+[31m-[m
+[31m-async function safePush(userId, text) {[m
+[31m-    if (!userId || !text) return;[m
+[31m-[m
+[31m-    try {[m
+[31m-        await client.pushMessage(userId, {[m
+[31m-            type: 'text',[m
+[31m-            text[m
+[31m-        });[m
+[31m-    } catch (error) {[m
+[31m-        console.error('❌ pushMessage error:', error);[m
+[31m-    }[m
+[31m-}[m
+[31m-[m
+[31m-// =====================[m
+[31m-// HANDLE EVENT[m
+[31m-// =====================[m
+[31m-async function handleEvent(event) {[m
+[31m-    console.log('[STEP 1] handleEvent started');[m
+[31m-[m
+[31m-    if (event.type === 'follow') {[m
+[31m-        return safeReply(event.replyToken, WELCOME_MESSAGE);[m
+[31m-    }[m
+[31m-[m
+[31m-    let userId = null;[m
+[31m-    let sourceMessageId = null;[m
+[31m-[m
+[31m-    try {[m
+[31m-        if (event.type !== 'message' || event.message.type !== 'text') {[m
+[31m-            return null;[m
+[31m-        }[m
+[31m-[m
+[31m-        sourceMessageId = event.message.id;[m
+[31m-        userId = event.source?.userId;[m
+[31m-        const text = event.message.text.trim();[m
+[31m-[m
+[31m-        if (isHelpCommand(text)) {[m
+[31m-            return safeReply(event.replyToken, HELP_MESSAGE);[m
+[31m-        }[m
+[31m-[m
+[31m-        if (isDashboardCommand(text)) {[m
+[31m-            return safeReply(event.replyToken, formatDashboardMessage(userId));[m
+[31m-        }[m
+[31m-[m
+[31m-        console.log('[INCOMING]', {[m
+[31m-            userId,[m
+[31m-            sourceMessageId,[m
+[31m-            text[m
+[31m-        });[m
+[31m-[m
+[31m-        if (!userId) {[m
+[31m-            console.error('❌ Missing userId in event source');[m
+[31m-            return null;[m
+[31m-        }[m
+[31m-[m
+[31m-        const isSummaryRequest = isSummaryCommand(text);[m
+[31m-[m
+[31m-        if (isAIInsightCommand(text)) {[m
+[31m-            const insight = await generateAIInsight(userId);[m
+[31m-            return safeReply(event.replyToken, insight);[m
+[31m-        }[m
+[31m-[m
+[31m-        const parsedList = parseMessage(text);[m
+[31m-[m
+[31m-        console.log('[STEP 2] parsed:', parsedList);[m
+[31m-[m
+[31m-        console.log('[PARSED]', parsedList);[m
+[31m-[m
+[31m-        if (parsedList.length > 0) {[m
+[31m-            await Promise.all([m
+[31m-                parsedList.map((tx, index) =>[m
+[31m-                    saveTransaction(userId, tx, sourceMessageId, index)[m
+[31m-                )[m
+[31m-            );[m
+[31m-        }[m
+[31m-[m
+[31m-        console.log('[STEP 3] database save completed');[m
+[31m-[m
+[31m-        if (parsedList.length > 0) {[m
+[31m-            console.log('[SAVED]', {[m
+[31m-                count: parsedList.length[m
+[31m-            });[m
+[31m-        }[m
+[31m-[m
+[31m-        let replyText = '';[m
+[31m-[m
+[31m-        if (parsedList.length === 0) {[m
+[31m-            if (!isSummaryRequest) {[m
+[31m-                replyText = PARSE_ERROR_MESSAGE;[m
+[31m-            }[m
+[31m-        } else {[m
+[31m-            replyText = formatSuccessReply(parsedList) + '\n\n';[m
+[31m-        }[m
+[31m-[m
+[31m-        if (isSummaryRequest) {[m
+[31m-            const summary = await getTodaySummaryAsync(userId);[m
+[31m-[m
+[31m-            console.log('[SUMMARY]', summary);[m
+[31m-[m
+[31m-            replyText += `📊 สรุปรายการวันนี้[m
+[31m-[m
+[31m-💰 รายรับทั้งหมด: ${formatAmount(summary.income)} บาท[m
+[31m-💸 รายจ่ายทั้งหมด: ${formatAmount(summary.expense)} บาท[m
+[31m-📦 คงเหลือ: ${formatAmount(summary.balance)} บาท${summary.balance < 0 ? ' ⚠️' : ''}`;[m
+[31m-        }[m
+[31m-[m
+[31m-        if (!replyText.trim()) {[m
+[31m-            replyText = PARSE_ERROR_MESSAGE;[m
+[31m-        }[m
+[31m-[m
+[31m-        console.log('[STEP 4] sending LINE reply');[m
+[31m-        const result = await safeReply(event.replyToken, replyText);[m
+[31m-        console.log('[STEP 5] LINE reply completed');[m
+[31m-        return result;[m
+[31m-[m
+[31m-    } catch (error) {[m
+[31m-        console.error('❌ handleEvent error:', error);[m
+[31m-[m
+[31m-        const isDuplicate =[m
+[31m-            error && error.message && error.message.includes('UNIQUE constraint failed');[m
+[31m-[m
+[31m-        if (isDuplicate) {[m
+[31m-            console.log('[DUPLICATE]', {[m
+[31m-                userId,[m
+[31m-                sourceMessageId[m
+[31m-            });[m
+[31m-[m
+[31m-            try {[m
+[31m-                return await safeReply(event.replyToken, '⚠️ ข้อความนี้ถูกบันทึกไปแล้ว');[m
+[31m-            } catch (replyError) {[m
+[31m-                console.error('❌ duplicate reply error:', replyError);[m
+[31m-                return null;[m
+[31m-            }[m
+[31m-        }[m
+[31m-[m
+[31m-        if (isLineNetworkTimeout(error)) {[m
+[31m-            console.error('❌ LINE reply timeout - saved data may already exist');[m
+[31m-            return null;[m
+[31m-        }[m
+[31m-[m
+[31m-        try {[m
+[31m-            return await safeReply(event.replyToken, '⚠️ ระบบขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้ง');[m
+[31m-        } catch (replyError) {[m
+[31m-            console.error('❌ replyMessage error:', replyError);[m
+[31m-            return null;[m
+[31m-        }[m
+[31m-    }[m
+[31m-}[m
+[31m-[m
+[31m-// =====================[m
+[31m-// ROOT[m
+[31m-// =====================[m
+ app.get('/', (req, res) => {[m
+     res.send('LINE Bot Ready');[m
+ });[m
+ [m
+[31m-// =====================[m
+[31m-// PRODUCTION API FOR DASHBOARD[m
+[31m-// =====================[m
+[31m-app.get('/api/recent', (req, res) => {[m
+[31m-    try {[m
+[31m-        const { userId } = req.query;[m
+[31m-        const limit = Number(req.query.limit || 20);[m
+[31m-[m
+[31m-        if (!requireUserId(res, userId)) return;[m
+[31m-[m
+[31m-        const safeLimit = Math.min(Math.max(limit, 1), 100);[m
+[31m-        const rows = getRecentTransactions(userId, safeLimit);[m
+[31m-[m
+[31m-        res.json({[m
+[31m-            ok: true,[m
+[31m-            count: rows.length,[m
+[31m-            items: rows[m
+[31m-        });[m
+[31m-    } catch (error) {[m
+[31m-        console.error('❌ /api/recent error:', error);[m
+[31m-        res.status(500).json({[m
+[31m-            ok: false,[m
+[31m-            error: 'Internal server error'[m
+[31m-        });[m
+[31m-    }[m
+[31m-});[m
+[31m-[m
+[31m-app.get('/api/category-summary', (req, res) => {[m
+[31m-    try {[m
+[31m-        const { userId } = req.query;[m
+[31m-[m
+[31m-        if (!requireUserId(res, userId)) return;[m
+[31m-[m
+[31m-        const rows = getTodayCategorySummary(userId);[m
+[31m-[m
+[31m-        res.json({[m
+[31m-            ok: true,[m
+[31m-            count: rows.length,[m
+[31m-            items: rows[m
+[31m-        });[m
+[31m-    } catch (error) {[m
+[31m-        console.error('❌ /api/category-summary error:', error);[m
+[31m-        res.status(500).json({[m
+[31m-            ok: false,[m
+[31m-            error: 'Internal server error'[m
+[31m-        });[m
+[31m-    }[m
+[31m-});[m
+[31m-[m
+[31m-app.get('/api/daily-summary', (req, res) => {[m
+[31m-    try {[m
+[31m-        const { userId } = req.query;[m
+[31m-        const days = Number(req.query.days || 7);[m
+[32m+[m[32mregisterDashboardRoutes(app);[m
+ [m
+[31m-        if (!requireUserId(res, userId)) return;[m
+[31m-[m
+[31m-        const safeDays = Math.min(Math.max(days, 1), 90);[m
+[31m-        const rows = getDailySummary(userId, safeDays);[m
+[31m-[m
+[31m-        res.json({[m
+[31m-            ok: true,[m
+[31m-            count: rows.length,[m
+[31m-            items: rows[m
+[31m-        });[m
+[31m-    } catch (error) {[m
+[31m-        console.error('❌ /api/daily-summary error:', error);[m
+[31m-        res.status(500).json({[m
+[31m-            ok: false,[m
+[31m-            error: 'Internal server error'[m
+[31m-        });[m
+[31m-    }[m
+[31m-});[m
+[31m-[m
+[31m-app.get('/api/monthly-summary', (req, res) => {[m
+[31m-    try {[m
+[31m-        const { userId } = req.query;[m
+[31m-        const months = Number(req.query.months || 6);[m
+[31m-[m
+[31m-        if (!requireUserId(res, userId)) return;[m
+[31m-[m
+[31m-        const safeMonths = Math.min(Math.max(months, 1), 24);[m
+[31m-        const rows = getMonthlySummary(userId, safeMonths);[m
+[31m-[m
+[31m-        res.json({[m
+[31m-            ok: true,[m
+[31m-            count: rows.length,[m
+[31m-            items: rows[m
+[31m-        });[m
+[31m-    } catch (error) {[m
+[31m-        console.error('❌ /api/monthly-summary error:', error);[m
+[31m-        res.status(500).json({[m
+[31m-            ok: false,[m
+[31m-            error: 'Internal server error'[m
+[31m-        });[m
+[31m-    }[m
+[31m-});[m
+[31m-[m
+[31m-// =====================[m
+[31m-// DEBUG API[m
+[31m-// =====================[m
+[31m-if (process.env.ENABLE_DEBUG === 'true') {[m
+[31m-    app.get('/debug/recent', (req, res) => {[m
+[31m-        try {[m
+[31m-            const { userId } = req.query;[m
+[31m-            const limit = Number(req.query.limit || 20);[m
+[31m-[m
+[31m-            if (!requireUserId(res, userId)) return;[m
+[31m-[m
+[31m-            const safeLimit = Math.min(Math.max(limit, 1), 100);[m
+[31m-            const rows = getRecentTransactions(userId, safeLimit);[m
+[31m-[m
+[31m-            res.json({[m
+[31m-                ok: true,[m
+[31m-                count: rows.length,[m
+[31m-                items: rows[m
+[31m-            });[m
+[31m-        } catch (error) {[m
+[31m-            console.error('❌ /debug/recent error:', error);[m
+[31m-            res.status(500).json({[m
+[31m-                ok: false,[m
+[31m-                error: 'Internal server error'[m
+[31m-            });[m
+[31m-        }[m
+[31m-    });[m
+[31m-[m
+[31m-    app.get('/debug/category-summary', (req, res) => {[m
+[31m-        try {[m
+[31m-            const { userId } = req.query;[m
+[31m-[m
+[31m-            if (!requireUserId(res, userId)) return;[m
+[31m-[m
+[31m-            const rows = getTodayCategorySummary(userId);[m
+[31m-[m
+[31m-            res.json({[m
+[31m-                ok: true,[m
+[31m-                count: rows.length,[m
+[31m-                items: rows[m
+[31m-            });[m
+[31m-        } catch (error) {[m
+[31m-            console.error('❌ /debug/category-summary error:', error);[m
+[31m-            res.status(500).json({[m
+[31m-                ok: false,[m
+[31m-                error: 'Internal server error'[m
+[31m-            });[m
+[31m-        }[m
+[31m-    });[m
+[31m-[m
+[31m-    app.get('/debug/daily-summary', (req, res) => {[m
+[31m-        try {[m
+[31m-            const { userId } = req.query;[m
+[31m-            const days = Number(req.query.days || 7);[m
+[31m-[m
+[31m-            if (!requireUserId(res, userId)) return;[m
+[31m-[m
+[31m-            const safeDays = Math.min(Math.max(days, 1), 90);[m
+[31m-            const rows = getDailySummary(userId, safeDays);[m
+[31m-[m
+[31m-            res.json({[m
+[31m-                ok: true,[m
+[31m-                count: rows.length,[m
+[31m-                items: rows[m
+[31m-            });[m
+[31m-        } catch (error) {[m
+[31m-            console.error('❌ /debug/daily-summary error:', error);[m
+[31m-            res.status(500).json({[m
+[31m-                ok: false,[m
+[31m-                error: 'Internal server error'[m
+[31m-            });[m
+[31m-        }[m
+[31m-    });[m
+[31m-    app.get('/debug/monthly-summary', (req, res) => {[m
+[31m-        try {[m
+[31m-            const { userId } = req.query;[m
+[31m-            const months = Number(req.query.months || 6);[m
+[31m-[m
+[31m-            if (!requireUserId(res, userId)) return;[m
+[31m-[m
+[31m-            const safeMonths = Math.min(Math.max(months, 1), 24);[m
+[31m-            const rows = getMonthlySummary(userId, safeMonths);[m
+[31m-[m
+[31m-            res.json({[m
+[31m-                ok: true,[m
+[31m-                count: rows.length,[m
+[31m-                items: rows[m
+[31m-            });[m
+[31m-        } catch (error) {[m
+[31m-            console.error('❌ /debug/monthly-summary error:', error);[m
+[31m-            res.status(500).json({[m
+[31m-                ok: false,[m
+[31m-                error: 'Internal server error'[m
+[31m-            });[m
+[31m-        }[m
+[32m+[m[32mif (require.main === module) {[m
+[32m+[m[32m    app.listen(PORT, () => {[m
+[32m+[m[32m        console.log(`Server running on port ${PORT}`);[m
+     });[m
+ }[m
+ [m
+[31m-app.get('/dashboard', (req, res) => {[m
+[31m-    res.send(renderDashboardPage(process.env.LIFF_ID));[m
+[31m-});[m
+[31m-[m
+[31m-app.listen(PORT, () => {[m
+[31m-    console.log(`Server running on port ${PORT}`);[m
+[31m-});[m
+[32m+[m[32mmodule.exports = app;[m
