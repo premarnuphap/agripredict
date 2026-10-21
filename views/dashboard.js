@@ -12,18 +12,23 @@ function renderDashboardPage(liffId) {
                         body {
                             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
                             padding: 24px;
-                            background: #F5F2EA;
+                            background: linear-gradient(135deg, #e8f5e9 0%, #d4edda 50%, #c8e6c9 100%);
                             color: #223344;
                             margin: 0;
+                            min-height: 100vh;
                         }
                         .box {
                             max-width: 480px;
                             margin: 48px auto;
-                            background: #FAFAF8;
+                            background: rgba(255, 255, 255, 0.55);
+                            backdrop-filter: blur(20px) saturate(180%);
+                            -webkit-backdrop-filter: blur(20px) saturate(180%);
                             padding: 32px 28px;
                             border-radius: 24px;
-                            box-shadow: 0 8px 30px rgba(34,51,68,0.08);
-                            border: 1px solid rgba(34,51,68,0.06);
+                            box-shadow:
+                                0 8px 32px rgba(31, 38, 135, 0.12),
+                                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+                            border: 1px solid rgba(255, 255, 255, 0.7);
                         }
                         h1 { font-size: 22px; font-weight: 700; margin: 0 0 12px; }
                         .error {
@@ -33,7 +38,7 @@ function renderDashboardPage(liffId) {
                         }
                         p { font-size: 15px; line-height: 1.6; color: #223344; }
                         code {
-                            background: rgba(140,106,67,0.12);
+                            background: rgba(140,106,67,0.15);
                             color: #8C6A43;
                             padding: 2px 8px;
                             border-radius: 8px;
@@ -62,7 +67,9 @@ function renderDashboardPage(liffId) {
                 <link rel="preconnect" href="https://fonts.googleapis.com">
                 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
                 <style>
-                    /* ===== Design tokens ===== */
+                    /* =====================================================
+                       GLASSMORPHISM THEME
+                       ===================================================== */
                     :root {
                         --forest: #2F6F57;
                         --forest-dark: #244F41;
@@ -74,33 +81,81 @@ function renderDashboardPage(liffId) {
                         --error: #C84B31;
                         --success: #4B8F5A;
                         --warning: #C89B3C;
-                        --border: rgba(34,51,68,0.07);
-                        --shadow-sm: 0 1px 2px rgba(34,51,68,0.05);
-                        --shadow-md: 0 6px 20px rgba(34,51,68,0.07);
-                        --shadow-lg: 0 12px 34px rgba(34,51,68,0.10);
+
+                        /* Glass tokens */
+                        --glass-bg:        rgba(255, 255, 255, 0.55);
+                        --glass-bg-strong: rgba(255, 255, 255, 0.72);
+                        --glass-bg-soft:   rgba(255, 255, 255, 0.38);
+                        --glass-border:    rgba(255, 255, 255, 0.75);
+                        --glass-border-soft: rgba(255, 255, 255, 0.5);
+                        --glass-shadow:    0 8px 32px rgba(31, 38, 135, 0.12);
+                        --glass-inset:     inset 0 1px 0 rgba(255, 255, 255, 0.85);
+
+                        --border:          rgba(34, 51, 68, 0.08);
                         --radius-lg: 24px;
                         --radius-md: 18px;
                         --radius-sm: 12px;
-                        --header-h: 132px;
                     }
 
                     * { box-sizing: border-box; }
 
                     html { -webkit-tap-highlight-color: transparent; }
 
+                    /* ========== Background with floating blobs ========== */
                     body {
                         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                         margin: 0;
-                        background: var(--sand);
                         color: var(--navy);
                         font-size: 16px;
                         line-height: 1.5;
                         -webkit-font-smoothing: antialiased;
+                        min-height: 100vh;
+                        position: relative;
+                        overflow-x: hidden;
+                        background:
+                            linear-gradient(135deg, #e8f5e9 0%, #d4edda 40%, #f0f9f0 70%, #fff8e1 100%);
+                    }
+
+                    body::before,
+                    body::after {
+                        content: '';
+                        position: fixed;
+                        width: 60vw;
+                        height: 60vw;
+                        max-width: 800px;
+                        max-height: 800px;
+                        border-radius: 50%;
+                        z-index: 0;
+                        pointer-events: none;
+                        filter: blur(60px);
+                        opacity: 0.55;
+                    }
+
+                    body::before {
+                        top: -15%;
+                        left: -15%;
+                        background: radial-gradient(circle at 30% 30%, rgba(47, 111, 87, 0.7), transparent 60%);
+                        animation: floatBlob 22s ease-in-out infinite;
+                    }
+
+                    body::after {
+                        bottom: -15%;
+                        right: -15%;
+                        background: radial-gradient(circle at 70% 70%, rgba(200, 155, 60, 0.55), transparent 60%);
+                        animation: floatBlob 28s ease-in-out infinite reverse;
+                    }
+
+                    @keyframes floatBlob {
+                        0%, 100% { transform: translate(0, 0) scale(1); }
+                        33%      { transform: translate(40px, -30px) scale(1.05); }
+                        66%      { transform: translate(-30px, 30px) scale(0.95); }
                     }
 
                     button, select, input { font-family: inherit; }
 
                     .app {
+                        position: relative;
+                        z-index: 1;
                         max-width: 640px;
                         margin: 0 auto;
                         padding-bottom: 48px;
@@ -110,14 +165,19 @@ function renderDashboardPage(liffId) {
                         .app { max-width: 1040px; }
                     }
 
-                    /* ===== Section 1: Header ===== */
+                    /* =====================================================
+                       Section 1: Header (glass)
+                       ===================================================== */
                     .header {
                         position: sticky;
                         top: 0;
                         z-index: 30;
-                        background: var(--sand);
+                        background: rgba(255, 255, 255, 0.45);
+                        backdrop-filter: blur(24px) saturate(180%);
+                        -webkit-backdrop-filter: blur(24px) saturate(180%);
                         padding: 18px 20px 14px;
-                        border-bottom: 1px solid var(--border);
+                        border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+                        box-shadow: 0 4px 24px rgba(31, 38, 135, 0.06);
                     }
 
                     .header-top {
@@ -152,8 +212,11 @@ function renderDashboardPage(liffId) {
                         width: 42px;
                         height: 42px;
                         border-radius: 50%;
-                        border: 1px solid var(--border);
-                        background: var(--white);
+                        border: 1px solid var(--glass-border);
+                        background: rgba(255, 255, 255, 0.55);
+                        backdrop-filter: blur(14px) saturate(160%);
+                        -webkit-backdrop-filter: blur(14px) saturate(160%);
+                        box-shadow: var(--glass-shadow), var(--glass-inset);
                         display: flex;
                         align-items: center;
                         justify-content: center;
@@ -163,7 +226,9 @@ function renderDashboardPage(liffId) {
 
                     .icon-btn:active { transform: scale(0.94); }
 
-                    .icon-btn:hover { box-shadow: var(--shadow-sm); }
+                    .icon-btn:hover {
+                        box-shadow: 0 12px 36px rgba(31, 38, 135, 0.18), var(--glass-inset);
+                    }
 
                     .notif-dot {
                         position: absolute;
@@ -173,7 +238,8 @@ function renderDashboardPage(liffId) {
                         height: 7px;
                         border-radius: 50%;
                         background: var(--error);
-                        border: 1.5px solid var(--sand);
+                        border: 1.5px solid rgba(255, 255, 255, 0.9);
+                        box-shadow: 0 0 8px rgba(200, 75, 49, 0.6);
                     }
 
                     .avatar {
@@ -181,14 +247,15 @@ function renderDashboardPage(liffId) {
                         height: 42px;
                         border-radius: 50%;
                         object-fit: cover;
-                        border: 1px solid var(--border);
-                        background: var(--moss);
+                        border: 1px solid var(--glass-border);
+                        background: linear-gradient(135deg, var(--moss), var(--forest));
                         color: var(--white);
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         font-weight: 700;
                         font-size: 15px;
+                        box-shadow: var(--glass-shadow);
                     }
 
                     .header-meta {
@@ -197,7 +264,7 @@ function renderDashboardPage(liffId) {
                         gap: 14px;
                         margin-top: 12px;
                         font-size: 13px;
-                        color: rgba(34,51,68,0.62);
+                        color: rgba(34, 51, 68, 0.62);
                     }
 
                     .header-meta .dot { opacity: 0.4; }
@@ -208,17 +275,38 @@ function renderDashboardPage(liffId) {
                         gap: 6px;
                     }
 
-                    /* ===== Section 2: AI Insight hero ===== */
+                    /* =====================================================
+                       Section 2: AI Insight hero (green glass)
+                       ===================================================== */
                     .section-pad { padding: 16px 20px 0; }
 
                     .insight-card {
-                        background: var(--forest);
+                        background: linear-gradient(135deg,
+                            rgba(47, 111, 87, 0.72) 0%,
+                            rgba(36, 79, 65, 0.82) 100%);
+                        backdrop-filter: blur(24px) saturate(180%);
+                        -webkit-backdrop-filter: blur(24px) saturate(180%);
                         border-radius: var(--radius-lg);
                         padding: 24px 22px;
                         color: var(--white);
-                        box-shadow: var(--shadow-lg);
+                        border: 1px solid rgba(255, 255, 255, 0.25);
+                        box-shadow:
+                            0 20px 60px rgba(47, 111, 87, 0.28),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.2);
                         position: relative;
                         overflow: hidden;
+                    }
+
+                    .insight-card::before {
+                        content: '';
+                        position: absolute;
+                        top: -50%;
+                        right: -20%;
+                        width: 280px;
+                        height: 280px;
+                        background: radial-gradient(circle, rgba(255, 255, 255, 0.18), transparent 70%);
+                        border-radius: 50%;
+                        pointer-events: none;
                     }
 
                     .insight-eyebrow {
@@ -226,20 +314,23 @@ function renderDashboardPage(liffId) {
                         font-weight: 600;
                         letter-spacing: 0.08em;
                         text-transform: uppercase;
-                        opacity: 0.75;
+                        opacity: 0.78;
                         margin: 0 0 10px;
+                        position: relative;
                     }
 
                     .insight-body {
                         display: flex;
                         align-items: flex-start;
                         gap: 14px;
+                        position: relative;
                     }
 
                     .insight-icon {
                         font-size: 30px;
                         line-height: 1;
                         flex-shrink: 0;
+                        filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.15));
                     }
 
                     .insight-title {
@@ -257,13 +348,23 @@ function renderDashboardPage(liffId) {
                         line-height: 1.5;
                     }
 
-                    /* ===== Shared card / section shell ===== */
+                    /* =====================================================
+                       Shared glass card
+                       ===================================================== */
                     .card {
-                        background: var(--white);
+                        background: var(--glass-bg);
+                        backdrop-filter: blur(20px) saturate(180%);
+                        -webkit-backdrop-filter: blur(20px) saturate(180%);
                         border-radius: var(--radius-lg);
-                        border: 1px solid var(--border);
-                        box-shadow: var(--shadow-md);
+                        border: 1px solid var(--glass-border);
+                        box-shadow: var(--glass-shadow), var(--glass-inset);
                         transition: box-shadow 0.2s ease, transform 0.2s ease;
+                    }
+
+                    .card:hover {
+                        box-shadow:
+                            0 12px 44px rgba(31, 38, 135, 0.16),
+                            var(--glass-inset);
                     }
 
                     .section-title-row {
@@ -282,11 +383,22 @@ function renderDashboardPage(liffId) {
 
                     .section-hint {
                         font-size: 12.5px;
-                        color: rgba(34,51,68,0.5);
+                        color: rgba(34, 51, 68, 0.5);
                         margin: 2px 0 0;
                     }
 
-                    /* ===== Section 3: KPI cards ===== */
+                    /* Generic paddings that replace inline style="padding:20px" */
+                    .card-pad {
+                        padding: 20px;
+                    }
+
+                    .card-pad-sm {
+                        padding: 22px;
+                    }
+
+                    /* =====================================================
+                       Section 3: KPI cards (glass)
+                       ===================================================== */
                     .kpi-grid {
                         display: grid;
                         grid-template-columns: 1fr 1fr;
@@ -300,15 +412,35 @@ function renderDashboardPage(liffId) {
                     .kpi-card {
                         padding: 18px 16px;
                         cursor: default;
+                        position: relative;
+                        overflow: hidden;
                     }
 
-                    .kpi-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+                    .kpi-card::after {
+                        content: '';
+                        position: absolute;
+                        top: -40%;
+                        right: -30%;
+                        width: 100px;
+                        height: 100px;
+                        background: radial-gradient(circle, rgba(255, 255, 255, 0.5), transparent 70%);
+                        border-radius: 50%;
+                        pointer-events: none;
+                    }
+
+                    .kpi-card:hover {
+                        box-shadow:
+                            0 16px 48px rgba(31, 38, 135, 0.2),
+                            var(--glass-inset);
+                        transform: translateY(-2px);
+                    }
 
                     .kpi-label {
                         font-size: 13px;
-                        color: rgba(34,51,68,0.58);
+                        color: rgba(34, 51, 68, 0.58);
                         font-weight: 500;
                         margin: 0 0 8px;
+                        position: relative;
                     }
 
                     .kpi-value {
@@ -318,6 +450,7 @@ function renderDashboardPage(liffId) {
                         margin: 0 0 8px;
                         font-variant-numeric: tabular-nums;
                         letter-spacing: -0.01em;
+                        position: relative;
                     }
 
                     .kpi-trend {
@@ -328,20 +461,55 @@ function renderDashboardPage(liffId) {
                         font-weight: 600;
                         padding: 3px 8px;
                         border-radius: 20px;
+                        position: relative;
+                        backdrop-filter: blur(8px);
+                        -webkit-backdrop-filter: blur(8px);
                     }
 
-                    .kpi-trend.up { color: var(--success); background: rgba(75,143,90,0.12); }
-                    .kpi-trend.down { color: var(--error); background: rgba(200,75,49,0.12); }
-                    .kpi-trend.flat { color: var(--moss); background: rgba(111,143,114,0.12); }
+                    .kpi-trend.up {
+                        color: var(--success);
+                        background: rgba(75, 143, 90, 0.18);
+                        border: 1px solid rgba(75, 143, 90, 0.3);
+                    }
 
-                    .kpi-spark { width: 100%; height: 28px; margin-top: 10px; display: block; }
+                    .kpi-trend.down {
+                        color: var(--error);
+                        background: rgba(200, 75, 49, 0.16);
+                        border: 1px solid rgba(200, 75, 49, 0.3);
+                    }
 
-                    /* ===== Section 4: Health score ===== */
-                    .health-card { padding: 22px; display: flex; flex-direction: column; gap: 16px; }
+                    .kpi-trend.flat {
+                        color: var(--moss);
+                        background: rgba(111, 143, 114, 0.16);
+                        border: 1px solid rgba(111, 143, 114, 0.3);
+                    }
+
+                    .kpi-spark {
+                        width: 100%;
+                        height: 28px;
+                        margin-top: 10px;
+                        display: block;
+                        position: relative;
+                    }
+
+                    /* =====================================================
+                       Section 4: Health score
+                       ===================================================== */
+                    .health-card {
+                        padding: 22px;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 16px;
+                    }
 
                     .health-top { display: flex; align-items: center; gap: 18px; }
 
-                    .health-ring-wrap { position: relative; width: 84px; height: 84px; flex-shrink: 0; }
+                    .health-ring-wrap {
+                        position: relative;
+                        width: 84px;
+                        height: 84px;
+                        flex-shrink: 0;
+                    }
 
                     .health-ring-wrap svg { transform: rotate(-90deg); }
 
@@ -364,6 +532,8 @@ function renderDashboardPage(liffId) {
                         padding: 4px 10px;
                         border-radius: 20px;
                         margin-bottom: 6px;
+                        backdrop-filter: blur(8px);
+                        -webkit-backdrop-filter: blur(8px);
                     }
 
                     .health-reasons {
@@ -380,7 +550,7 @@ function renderDashboardPage(liffId) {
                         align-items: flex-start;
                         gap: 10px;
                         font-size: 14px;
-                        color: rgba(34,51,68,0.78);
+                        color: rgba(34, 51, 68, 0.78);
                         line-height: 1.5;
                     }
 
@@ -390,9 +560,12 @@ function renderDashboardPage(liffId) {
                         border-radius: 50%;
                         margin-top: 7px;
                         flex-shrink: 0;
+                        box-shadow: 0 0 6px currentColor;
                     }
 
-                    /* ===== Section 5: Season timeline ===== */
+                    /* =====================================================
+                       Section 5: Season timeline
+                       ===================================================== */
                     .timeline-scroll {
                         display: flex;
                         gap: 10px;
@@ -408,15 +581,21 @@ function renderDashboardPage(liffId) {
                         flex: 0 0 auto;
                         width: 76px;
                         border-radius: var(--radius-sm);
-                        border: 1px solid var(--border);
+                        border: 1px solid var(--glass-border-soft);
                         padding: 12px 8px;
                         text-align: center;
-                        background: var(--sand);
+                        background: rgba(255, 255, 255, 0.5);
+                        backdrop-filter: blur(10px);
+                        -webkit-backdrop-filter: blur(10px);
+                        box-shadow: 0 4px 14px rgba(31, 38, 135, 0.05);
                     }
 
                     .timeline-month.active {
-                        background: var(--forest);
-                        border-color: var(--forest);
+                        background: linear-gradient(135deg,
+                            rgba(47, 111, 87, 0.85),
+                            rgba(36, 79, 65, 0.95));
+                        border-color: rgba(255, 255, 255, 0.4);
+                        box-shadow: 0 8px 24px rgba(47, 111, 87, 0.35);
                     }
 
                     .timeline-month .tm-icon { font-size: 20px; margin-bottom: 6px; }
@@ -432,13 +611,15 @@ function renderDashboardPage(liffId) {
 
                     .timeline-month .tm-stage {
                         font-size: 10.5px;
-                        color: rgba(34,51,68,0.55);
+                        color: rgba(34, 51, 68, 0.55);
                         line-height: 1.3;
                     }
 
-                    .timeline-month.active .tm-stage { color: rgba(250,250,248,0.85); }
+                    .timeline-month.active .tm-stage { color: rgba(250, 250, 248, 0.9); }
 
-                    /* ===== Section 6: Recommendations ===== */
+                    /* =====================================================
+                       Section 6: Recommendations
+                       ===================================================== */
                     .rec-list { display: flex; flex-direction: column; gap: 10px; }
 
                     .rec-item {
@@ -447,20 +628,24 @@ function renderDashboardPage(liffId) {
                         gap: 14px;
                         padding: 14px;
                         border-radius: var(--radius-sm);
-                        border: 1px solid var(--border);
-                        background: var(--sand);
+                        border: 1px solid var(--glass-border-soft);
+                        background: rgba(255, 255, 255, 0.42);
+                        backdrop-filter: blur(12px);
+                        -webkit-backdrop-filter: blur(12px);
+                        box-shadow: 0 4px 14px rgba(31, 38, 135, 0.05);
                     }
 
                     .rec-icon {
                         width: 42px;
                         height: 42px;
                         border-radius: 12px;
-                        background: var(--white);
+                        background: rgba(255, 255, 255, 0.8);
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         font-size: 19px;
                         flex-shrink: 0;
+                        border: 1px solid var(--glass-border);
                     }
 
                     .rec-text { flex: 1; min-width: 0; }
@@ -476,33 +661,66 @@ function renderDashboardPage(liffId) {
                         margin-bottom: 4px;
                     }
 
-                    .rec-priority.high { color: var(--error); background: rgba(200,75,49,0.12); }
-                    .rec-priority.medium { color: var(--warning); background: rgba(200,155,60,0.14); }
-                    .rec-priority.low { color: var(--moss); background: rgba(111,143,114,0.14); }
+                    .rec-priority.high {
+                        color: var(--error);
+                        background: rgba(200, 75, 49, 0.14);
+                        border: 1px solid rgba(200, 75, 49, 0.25);
+                    }
+                    .rec-priority.medium {
+                        color: #B58A2B;
+                        background: rgba(200, 155, 60, 0.16);
+                        border: 1px solid rgba(200, 155, 60, 0.3);
+                    }
+                    .rec-priority.low {
+                        color: var(--moss);
+                        background: rgba(111, 143, 114, 0.16);
+                        border: 1px solid rgba(111, 143, 114, 0.3);
+                    }
 
-                    .rec-title { font-size: 14.5px; font-weight: 600; color: var(--navy); margin: 0 0 2px; }
+                    .rec-title {
+                        font-size: 14.5px;
+                        font-weight: 600;
+                        color: var(--navy);
+                        margin: 0 0 2px;
+                    }
 
-                    .rec-reason { font-size: 13px; color: rgba(34,51,68,0.6); margin: 0; line-height: 1.4; }
+                    .rec-reason {
+                        font-size: 13px;
+                        color: rgba(34, 51, 68, 0.6);
+                        margin: 0;
+                        line-height: 1.4;
+                    }
 
                     .rec-action {
                         flex-shrink: 0;
                         width: 34px;
                         height: 34px;
                         border-radius: 50%;
-                        border: none;
-                        background: var(--forest);
+                        border: 1px solid rgba(255, 255, 255, 0.3);
+                        background: linear-gradient(135deg, var(--forest), var(--forest-dark));
                         color: var(--white);
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         cursor: pointer;
                         transition: transform 0.15s ease;
+                        box-shadow: 0 4px 14px rgba(47, 111, 87, 0.3);
                     }
 
                     .rec-action:active { transform: scale(0.9); }
 
-                    /* ===== Charts sections ===== */
-                    .chart-canvas-wrap { position: relative; width: 100%; min-height: 220px; }
+                    /* =====================================================
+                       Charts
+                       ===================================================== */
+                    .chart-canvas-wrap {
+                        position: relative;
+                        width: 100%;
+                        min-height: 220px;
+                        padding: 8px;
+                        border-radius: var(--radius-sm);
+                        background: rgba(255, 255, 255, 0.4);
+                        border: 1px solid rgba(255, 255, 255, 0.5);
+                    }
 
                     .chart-stat-row {
                         display: flex;
@@ -511,7 +729,16 @@ function renderDashboardPage(liffId) {
                         flex-wrap: wrap;
                     }
 
-                    .chart-stat { font-size: 13px; color: rgba(34,51,68,0.6); }
+                    .chart-stat {
+                        font-size: 13px;
+                        color: rgba(34, 51, 68, 0.65);
+                        padding: 4px 10px;
+                        border-radius: 10px;
+                        background: rgba(255, 255, 255, 0.5);
+                        border: 1px solid var(--glass-border-soft);
+                        backdrop-filter: blur(6px);
+                        -webkit-backdrop-filter: blur(6px);
+                    }
 
                     .chart-stat b { color: var(--navy); font-weight: 700; }
 
@@ -524,13 +751,15 @@ function renderDashboardPage(liffId) {
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        color: rgba(34,51,68,0.45);
+                        color: rgba(34, 51, 68, 0.5);
                         font-size: 14px;
                         text-align: center;
                         padding: 20px;
                     }
 
-                    /* ===== Section 8: Expense bars ===== */
+                    /* =====================================================
+                       Section 8: Expense bars
+                       ===================================================== */
                     .expense-bars { display: flex; flex-direction: column; gap: 12px; }
 
                     .expense-row-top {
@@ -543,48 +772,76 @@ function renderDashboardPage(liffId) {
 
                     .expense-row-name { font-weight: 600; color: var(--navy); }
 
-                    .expense-row-value { color: rgba(34,51,68,0.6); font-variant-numeric: tabular-nums; }
+                    .expense-row-value {
+                        color: rgba(34, 51, 68, 0.6);
+                        font-variant-numeric: tabular-nums;
+                    }
 
                     .expense-bar-track {
                         height: 10px;
                         border-radius: 6px;
-                        background: var(--sand);
+                        background: rgba(255, 255, 255, 0.5);
+                        border: 1px solid rgba(255, 255, 255, 0.6);
                         overflow: hidden;
                     }
 
                     .expense-bar-fill {
                         height: 100%;
                         border-radius: 6px;
-                        background: var(--moss);
+                        background: linear-gradient(90deg, var(--moss), var(--forest));
                         transition: width 0.6s ease;
                     }
 
-                    .expense-bar-fill.top { background: var(--forest); }
+                    .expense-bar-fill.top {
+                        background: linear-gradient(90deg, var(--forest), var(--forest-dark));
+                        box-shadow: 0 0 12px rgba(47, 111, 87, 0.4);
+                    }
 
-                    /* ===== Section 9: Top cost driver ===== */
-                    .driver-card { padding: 20px 22px; display: flex; align-items: center; gap: 16px; }
+                    /* =====================================================
+                       Section 9: Top cost driver
+                       ===================================================== */
+                    .driver-card {
+                        padding: 20px 22px;
+                        display: flex;
+                        align-items: center;
+                        gap: 16px;
+                    }
 
                     .driver-icon {
                         width: 52px;
                         height: 52px;
                         border-radius: 16px;
-                        background: rgba(140,106,67,0.14);
+                        background: rgba(140, 106, 67, 0.18);
+                        border: 1px solid rgba(140, 106, 67, 0.2);
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         font-size: 24px;
                         flex-shrink: 0;
+                        backdrop-filter: blur(8px);
+                        -webkit-backdrop-filter: blur(8px);
                     }
 
-                    .driver-name { font-size: 15px; font-weight: 600; color: var(--navy); margin: 0 0 4px; }
+                    .driver-name {
+                        font-size: 15px;
+                        font-weight: 600;
+                        color: var(--navy);
+                        margin: 0 0 4px;
+                    }
 
-                    .driver-value { font-size: 22px; font-weight: 800; color: var(--navy); margin: 0; }
+                    .driver-value {
+                        font-size: 22px;
+                        font-weight: 800;
+                        color: var(--navy);
+                        margin: 0;
+                    }
 
                     .driver-share {
                         font-size: 12.5px;
                         font-weight: 700;
                         color: var(--earth);
-                        background: rgba(140,106,67,0.12);
+                        background: rgba(140, 106, 67, 0.15);
+                        border: 1px solid rgba(140, 106, 67, 0.25);
                         padding: 3px 9px;
                         border-radius: 20px;
                     }
@@ -592,25 +849,39 @@ function renderDashboardPage(liffId) {
                     .driver-note {
                         margin: 12px 22px 20px;
                         padding-top: 14px;
-                        border-top: 1px solid var(--border);
+                        border-top: 1px solid rgba(34, 51, 68, 0.08);
                         font-size: 13.5px;
-                        color: rgba(34,51,68,0.65);
+                        color: rgba(34, 51, 68, 0.65);
                         line-height: 1.5;
                     }
 
-                    /* ===== Section 11: Transactions ===== */
+                    /* =====================================================
+                       Section 11: Transactions
+                       ===================================================== */
                     .tx-search {
                         width: 100%;
                         padding: 11px 14px;
                         border-radius: 12px;
-                        border: 1px solid var(--border);
-                        background: var(--sand);
+                        border: 1px solid var(--glass-border);
+                        background: rgba(255, 255, 255, 0.55);
+                        backdrop-filter: blur(12px);
+                        -webkit-backdrop-filter: blur(12px);
                         font-size: 14px;
                         color: var(--navy);
                         margin-bottom: 12px;
+                        box-shadow: 0 2px 8px rgba(31, 38, 135, 0.05);
                     }
 
-                    .tx-search:focus { outline: 2px solid var(--forest); outline-offset: 1px; }
+                    .tx-search::placeholder {
+                        color: rgba(34, 51, 68, 0.4);
+                    }
+
+                    .tx-search:focus {
+                        outline: none;
+                        border-color: var(--forest);
+                        box-shadow: 0 0 0 3px rgba(47, 111, 87, 0.15);
+                        background: rgba(255, 255, 255, 0.75);
+                    }
 
                     .tx-list { display: flex; flex-direction: column; }
 
@@ -619,7 +890,7 @@ function renderDashboardPage(liffId) {
                         align-items: center;
                         gap: 12px;
                         padding: 12px 2px;
-                        border-bottom: 1px solid var(--border);
+                        border-bottom: 1px solid rgba(34, 51, 68, 0.07);
                     }
 
                     .tx-row:last-child { border-bottom: none; }
@@ -628,21 +899,29 @@ function renderDashboardPage(liffId) {
                         width: 38px;
                         height: 38px;
                         border-radius: 11px;
-                        background: var(--sand);
+                        background: rgba(255, 255, 255, 0.65);
+                        border: 1px solid rgba(255, 255, 255, 0.8);
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         font-size: 17px;
                         flex-shrink: 0;
+                        backdrop-filter: blur(6px);
+                        -webkit-backdrop-filter: blur(6px);
                     }
 
                     .tx-mid { flex: 1; min-width: 0; }
 
-                    .tx-cat { font-size: 14px; font-weight: 600; color: var(--navy); margin: 0 0 2px; }
+                    .tx-cat {
+                        font-size: 14px;
+                        font-weight: 600;
+                        color: var(--navy);
+                        margin: 0 0 2px;
+                    }
 
                     .tx-note {
                         font-size: 12.5px;
-                        color: rgba(34,51,68,0.5);
+                        color: rgba(34, 51, 68, 0.5);
                         margin: 0;
                         white-space: nowrap;
                         overflow: hidden;
@@ -651,15 +930,25 @@ function renderDashboardPage(liffId) {
 
                     .tx-right { text-align: right; flex-shrink: 0; }
 
-                    .tx-amount { font-size: 14.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+                    .tx-amount {
+                        font-size: 14.5px;
+                        font-weight: 700;
+                        font-variant-numeric: tabular-nums;
+                    }
 
                     .tx-amount.income { color: var(--success); }
 
                     .tx-amount.expense { color: var(--navy); }
 
-                    .tx-date { font-size: 11.5px; color: rgba(34,51,68,0.45); margin-top: 2px; }
+                    .tx-date {
+                        font-size: 11.5px;
+                        color: rgba(34, 51, 68, 0.45);
+                        margin-top: 2px;
+                    }
 
-                    /* ===== Toolbar (period + reset) ===== */
+                    /* =====================================================
+                       Toolbar (period + reset)
+                       ===================================================== */
                     .toolbar {
                         display: flex;
                         align-items: center;
@@ -670,10 +959,14 @@ function renderDashboardPage(liffId) {
 
                     .segmented {
                         display: inline-flex;
-                        background: var(--sand);
+                        background: rgba(255, 255, 255, 0.5);
+                        backdrop-filter: blur(14px);
+                        -webkit-backdrop-filter: blur(14px);
+                        border: 1px solid var(--glass-border);
                         border-radius: 12px;
                         padding: 3px;
                         gap: 2px;
+                        box-shadow: var(--glass-inset);
                     }
 
                     .segmented button {
@@ -682,29 +975,37 @@ function renderDashboardPage(liffId) {
                         padding: 7px 13px;
                         font-size: 13px;
                         font-weight: 600;
-                        color: rgba(34,51,68,0.55);
+                        color: rgba(34, 51, 68, 0.55);
                         border-radius: 9px;
                         cursor: pointer;
+                        transition: background 0.2s ease, color 0.2s ease;
                     }
 
                     .segmented button.active {
-                        background: var(--white);
+                        background: rgba(255, 255, 255, 0.9);
                         color: var(--navy);
-                        box-shadow: var(--shadow-sm);
+                        box-shadow: 0 2px 8px rgba(31, 38, 135, 0.1);
                     }
 
                     .ghost-btn {
-                        border: 1px solid var(--border);
-                        background: var(--white);
-                        color: rgba(34,51,68,0.6);
+                        border: 1px solid var(--glass-border);
+                        background: rgba(255, 255, 255, 0.5);
+                        backdrop-filter: blur(12px);
+                        -webkit-backdrop-filter: blur(12px);
+                        color: rgba(34, 51, 68, 0.7);
                         font-size: 12.5px;
                         font-weight: 600;
                         padding: 8px 12px;
                         border-radius: 10px;
                         cursor: pointer;
+                        transition: color 0.15s, border-color 0.15s, background 0.15s;
                     }
 
-                    .ghost-btn:hover { color: var(--error); border-color: rgba(200,75,49,0.3); }
+                    .ghost-btn:hover {
+                        color: var(--error);
+                        border-color: rgba(200, 75, 49, 0.35);
+                        background: rgba(255, 245, 240, 0.7);
+                    }
 
                     .action-toast {
                         font-size: 12.5px;
@@ -713,17 +1014,34 @@ function renderDashboardPage(liffId) {
                         min-height: 16px;
                     }
 
-                    /* ===== Layout stacks ===== */
-                    .stack { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
+                    /* =====================================================
+                       Layout stacks
+                       ===================================================== */
+                    .stack {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 16px;
+                        margin-top: 16px;
+                    }
 
                     @media (min-width: 900px) {
-                        .two-col { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; align-items: start; }
+                        .two-col {
+                            display: grid;
+                            grid-template-columns: 1.3fr 1fr;
+                            gap: 16px;
+                            align-items: start;
+                        }
                         .two-col > .stack { margin-top: 0; }
                     }
 
-                    /* ===== Skeleton ===== */
+                    /* =====================================================
+                       Skeleton (kept in case referenced elsewhere)
+                       ===================================================== */
                     .skel {
-                        background: linear-gradient(90deg, rgba(34,51,68,0.06) 25%, rgba(34,51,68,0.10) 37%, rgba(34,51,68,0.06) 63%);
+                        background: linear-gradient(90deg,
+                            rgba(255, 255, 255, 0.4) 25%,
+                            rgba(255, 255, 255, 0.65) 37%,
+                            rgba(255, 255, 255, 0.4) 63%);
                         background-size: 400% 100%;
                         animation: skel-shine 1.4s ease infinite;
                         border-radius: 8px;
@@ -734,16 +1052,25 @@ function renderDashboardPage(liffId) {
                         100% { background-position: 0 50%; }
                     }
 
-                    /* ===== Fade in ===== */
+                    /* =====================================================
+                       Fade in
+                       ===================================================== */
                     .fade-in { animation: fadeIn 0.45s ease both; }
 
                     @keyframes fadeIn {
                         from { opacity: 0; transform: translateY(6px); }
-                        to { opacity: 1; transform: translateY(0); }
+                        to   { opacity: 1; transform: translateY(0); }
                     }
 
                     @media (prefers-reduced-motion: reduce) {
-                        .fade-in, .skel, .icon-btn, .rec-action, .kpi-card, .expense-bar-fill { animation: none !important; transition: none !important; }
+                        .fade-in, .skel, .icon-btn, .rec-action,
+                        .kpi-card, .expense-bar-fill {
+                            animation: none !important;
+                            transition: none !important;
+                        }
+                        body::before, body::after {
+                            animation: none !important;
+                        }
                     }
                 </style>
             </head>
@@ -833,7 +1160,7 @@ function renderDashboardPage(liffId) {
 
                     <!-- ===== Section 7: Cash Flow ===== -->
                     <div class="section-pad">
-                        <div class="card" style="padding:20px;">
+                        <div class="card card-pad">
                             <div class="section-title-row">
                                 <div>
                                     <p class="section-title">กระแสเงินสด</p>
@@ -849,7 +1176,7 @@ function renderDashboardPage(liffId) {
 
                     <!-- ===== Section 10: Profit Trend ===== -->
                     <div class="section-pad">
-                        <div class="card" style="padding:20px;">
+                        <div class="card card-pad">
                             <div class="section-title-row">
                                 <div>
                                     <p class="section-title">แนวโน้มกำไร</p>
@@ -887,7 +1214,7 @@ function renderDashboardPage(liffId) {
 
                     <!-- ===== Section 5: Season Timeline ===== -->
                     <div class="section-pad">
-                        <div class="card" style="padding:20px;">
+                        <div class="card card-pad">
                             <div class="section-title-row">
                                 <div>
                                     <p class="section-title">ปฏิทินฤดูกาลเพาะปลูก</p>
@@ -900,7 +1227,7 @@ function renderDashboardPage(liffId) {
 
                     <!-- ===== Section 6: Smart Recommendations ===== -->
                     <div class="section-pad">
-                        <div class="card" style="padding:20px;">
+                        <div class="card card-pad">
                             <div class="section-title-row">
                                 <div>
                                     <p class="section-title">คำแนะนำสำหรับคุณ</p>
@@ -913,7 +1240,7 @@ function renderDashboardPage(liffId) {
 
                     <!-- ===== Section 8: Expense Analysis ===== -->
                     <div class="section-pad">
-                        <div class="card" style="padding:20px;">
+                        <div class="card card-pad">
                             <div class="section-title-row">
                                 <div>
                                     <p class="section-title">วิเคราะห์รายจ่าย</p>
@@ -944,7 +1271,7 @@ function renderDashboardPage(liffId) {
 
                     <!-- ===== Section 11: Recent Transactions ===== -->
                     <div class="section-pad">
-                        <div class="card" style="padding:20px;">
+                        <div class="card card-pad">
                             <div class="section-title-row">
                                 <div>
                                     <p class="section-title">รายการล่าสุด</p>
@@ -1627,7 +1954,6 @@ function renderDashboardPage(liffId) {
                     }
 
                     /* ===================== Section 2 + 4: AI insight & Farm Health Score ===================== */
-                    /* Rule-based, computed entirely from data already returned by the existing APIs. */
 
                     function computeMetrics() {
                         var income = sumField(state.daily, 'income');
