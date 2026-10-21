@@ -19,6 +19,7 @@ const {
     saveTransaction
 } = require('./db/database');
 const { generateAIInsight } = require('./services/ai');
+const { renderDashboardPage } = require('./views/dashboard');
 
 // =====================
 // SYSTEM MESSAGES
@@ -156,8 +157,6 @@ function isAIInsightCommand(text) {
     );
 }
 
-const { renderDashboardPage } = require('./views/dashboard');
-
 const app = express();
 const config = {
     channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
@@ -246,7 +245,7 @@ async function handleOnboardingStep(event, userId, text) {
     const hasFarmType = !!(profile && profile.farm_type);
 
     if (hasProvince && hasFarmType) {
-        return false; // profile already complete, not an onboarding turn
+        return false;
     }
 
     if (!hasProvince) {
@@ -438,7 +437,8 @@ const CATEGORY_RULES = [
 ];
 
 // =====================
-// WEBHOOK — FIX #1: await งานทั้งหมดให้เสร็จก่อนตอบ 200
+// WEBHOOK — FIX: await งานทั้งหมดให้เสร็จก่อนตอบ 200
+// (Vercel serverless freeze เมื่อ response ออก → background ถูกตัด)
 // =====================
 app.post('/webhook', line.middleware(config), async (req, res) => {
     const events = req.body.events || [];
@@ -469,7 +469,95 @@ app.post('/webhook', line.middleware(config), async (req, res) => {
 app.use(express.json());
 
 // =====================
-// RESET — FIX #3: ส่ง push ก่อน แล้วค่อยตอบ JSON
+// DASHBOARD — FIX: เพิ่ม route GET /dashboard (เดิม 404)
+// =====================
+app.get('/dashboard', (req, res) => {
+    try {
+        res.set('Content-Type', 'text/html; charset=utf-8');
+        res.send(renderDashboardPage(process.env.LIFF_ID));
+    } catch (error) {
+        console.error('[DASHBOARD_ERROR]', error);
+        res.status(500).send('Dashboard error');
+    }
+});
+
+// =====================
+// DASHBOARD DATA APIs — FIX: routes ที่ views/dashboard.js เรียก แต่เดิมไม่มี
+// =====================
+app.get('/api/recent', async (req, res) => {
+    try {
+        const userId = String(req.query.userId || '').trim();
+        if (!userId) return res.status(400).json({ error: 'Missing userId' });
+
+        const limitRaw = parseInt(req.query.limit, 10);
+        const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 100) : 20;
+
+        const rows = await getRecentTransactions(userId, limit);
+
+        // map createdAt ให้ dashboard อ่านได้ (pg คืน column เป็น lowercase: createdat)
+        const items = rows.map((r) => ({
+            id: r.id,
+            type: r.type,
+            amount: Number(r.amount),
+            category: r.category,
+            note: r.note,
+            createdAt: r.createdat || r.createdAt || null
+        }));
+
+        res.json({ items });
+    } catch (error) {
+        console.error('[API_RECENT_ERROR]', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/api/daily-summary', async (req, res) => {
+    try {
+        const userId = String(req.query.userId || '').trim();
+        if (!userId) return res.status(400).json({ error: 'Missing userId' });
+
+        const daysRaw = parseInt(req.query.days, 10);
+        const days = Number.isFinite(daysRaw) && daysRaw > 0 ? Math.min(daysRaw, 365) : 7;
+
+        const items = await getDailySummary(userId, days);
+        res.json({ items });
+    } catch (error) {
+        console.error('[API_DAILY_SUMMARY_ERROR]', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/api/category-summary', async (req, res) => {
+    try {
+        const userId = String(req.query.userId || '').trim();
+        if (!userId) return res.status(400).json({ error: 'Missing userId' });
+
+        const items = await getTodayCategorySummary(userId);
+        res.json({ items });
+    } catch (error) {
+        console.error('[API_CATEGORY_SUMMARY_ERROR]', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/api/monthly-summary', async (req, res) => {
+    try {
+        const userId = String(req.query.userId || '').trim();
+        if (!userId) return res.status(400).json({ error: 'Missing userId' });
+
+        const monthsRaw = parseInt(req.query.months, 10);
+        const months = Number.isFinite(monthsRaw) && monthsRaw > 0 ? Math.min(monthsRaw, 24) : 6;
+
+        const items = await getMonthlySummary(userId, months);
+        res.json({ items });
+    } catch (error) {
+        console.error('[API_MONTHLY_SUMMARY_ERROR]', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// =====================
+// RESET — FIX: push ก่อน แล้วค่อยตอบ (Vercel ตัด push หลัง response)
 // =====================
 app.post('/api/reset-today', async (req, res) => {
     try {
@@ -731,6 +819,19 @@ function formatSuccessReply(parsedList) {
     return message;
 }
 
+function formatSummaryReply(summary) {
+    const income = Number(summary?.income || 0);
+    const expense = Number(summary?.expense || 0);
+    const balance = Number(summary?.balance || 0);
+
+    return (
+        `📊 สรุปวันนี้\n\n` +
+        `📈 รายรับ: ${formatAmount(income)} บาท\n` +
+        `📉 รายจ่าย: ${formatAmount(expense)} บาท\n` +
+        `💰 คงเหลือ: ${formatAmount(balance)} บาท`
+    );
+}
+
 function requireUserId(res, userId) {
     if (!userId) {
         res.status(400).json({
@@ -855,22 +956,46 @@ async function safePush(userId, text) {
 }
 
 // =====================
-// HANDLE EVENT — FIX #2: รวม follow เป็น reply เดียว
+// HANDLE EVENT — FIX: follow ใช้ replyToken ครั้งเดียว + saveTransaction ส่ง sourceMessageId
 // =====================
 async function handleEvent(event) {
     if (!event || !event.type) return;
 
+    // FIX: await schema ready (กัน cold start ทำ query ก่อนตารางถูกสร้าง)
+    try {
+        await dbReady;
+    } catch (readyError) {
+        console.error('[DB_NOT_READY]', readyError?.message);
+        return;
+    }
+
     // -------- FOLLOW --------
     // FIX: replyToken ใช้ได้ครั้งเดียว → รวม welcome + quick reply ใน reply เดียว
+    // FIX: ส่ง quick reply เฉพาะเมื่อ profile ยังไม่ครบ (กัน overwrite province เดิม)
     if (event.type === 'follow') {
         try {
-            await client.replyMessage(event.replyToken, {
-                type: 'text',
-                text: WELCOME_MESSAGE,
-                quickReply: {
-                    items: buildQuickReplyItems(PROVINCE_OPTIONS)
+            const followUserId = event.source?.userId;
+            let profileComplete = false;
+
+            if (followUserId) {
+                try {
+                    const profile = await getUserProfile(followUserId);
+                    profileComplete = !!(profile && profile.province && profile.farm_type);
+                } catch (profileError) {
+                    console.error('[FOLLOW_PROFILE_ERROR]', profileError?.message);
                 }
-            });
+            }
+
+            const reply = {
+                type: 'text',
+                text: WELCOME_MESSAGE
+            };
+
+            if (!profileComplete) {
+                reply.quickReply = { items: buildQuickReplyItems(PROVINCE_OPTIONS) };
+            }
+
+            await client.replyMessage(event.replyToken, reply);
         } catch (err) {
             console.error('[FOLLOW_REPLY_ERROR]', err?.message);
         }
@@ -885,7 +1010,6 @@ async function handleEvent(event) {
 
     if (!userId || !message) return;
 
-    // รองรับเฉพาะข้อความตัวอักษร (ไม่เปลี่ยนพฤติกรรมเดิม)
     if (message.type !== 'text') {
         return;
     }
@@ -899,7 +1023,7 @@ async function handleEvent(event) {
         text
     });
 
-    // 1) Onboarding (เลือกจังหวัด / ประเภทเกษตร)
+    // 1) Onboarding
     const consumedByOnboarding = await handleOnboardingStep(event, userId, text);
     if (consumedByOnboarding) {
         return;
@@ -917,11 +1041,11 @@ async function handleEvent(event) {
         return;
     }
 
-    // 4) Summary
+    // 4) Summary — FIX: getTodaySummary คืน object → ต้อง format เป็น string ก่อนส่ง
     if (isSummaryCommand(text)) {
         try {
             const summary = await getTodaySummaryAsync(userId);
-            await safeReply(event.replyToken, summary);
+            await safeReply(event.replyToken, formatSummaryReply(summary));
         } catch (summaryError) {
             console.error('[SUMMARY_ERROR]', summaryError?.message);
             await safeReply(event.replyToken, '⚠️ ไม่สามารถดึงสรุปได้ในขณะนี้ กรุณาลองใหม่ภายหลัง');
@@ -929,7 +1053,7 @@ async function handleEvent(event) {
         return;
     }
 
-    // 5) AI Insight
+    // 5) AI Insight — FIX: generateAIInsight(userId) รับ userId เดียว (ไม่ใช่ profile/category)
     if (isAIInsightCommand(text)) {
         try {
             const allowed = await canUseAI(userId);
@@ -937,9 +1061,7 @@ async function handleEvent(event) {
                 await safeReply(event.replyToken, '⚠️ คุณใช้สิทธิ์วิเคราะห์ด้วย AI วันนี้ครบแล้ว กรุณาลองใหม่พรุ่งนี้');
                 return;
             }
-            const profile = await getUserProfile(userId);
-            const categorySummary = await getTodayCategorySummary(userId);
-            const insightText = await generateAIInsight(profile, categorySummary);
+            const insightText = await generateAIInsight(userId);
             await safeReply(event.replyToken, insightText);
         } catch (aiError) {
             console.error('[AI_ERROR]', aiError?.message);
@@ -948,7 +1070,7 @@ async function handleEvent(event) {
         return;
     }
 
-    // 6) Parse + Save + Reply
+    // 6) Parse
     const parsedList = parseMessage(text);
 
     if (!parsedList || parsedList.length === 0) {
@@ -956,14 +1078,18 @@ async function handleEvent(event) {
         return;
     }
 
+    // 7) Save — FIX: ส่ง sourceMessageId + sourceTxnIndex เพื่อให้ dedup ทำงาน
     const savedList = [];
-    for (const tx of parsedList) {
+    for (let index = 0; index < parsedList.length; index++) {
+        const tx = parsedList[index];
         try {
-            await saveTransaction(userId, tx);
+            await saveTransaction(userId, tx, message.id, index);
             savedList.push(tx);
         } catch (saveError) {
             console.error('[SAVE_ERROR]', {
                 userId,
+                messageId: message.id,
+                index,
                 tx,
                 message: saveError?.message
             });
@@ -975,6 +1101,7 @@ async function handleEvent(event) {
         return;
     }
 
+    // 8) Reply
     await safeReply(event.replyToken, formatSuccessReply(savedList));
 }
 
