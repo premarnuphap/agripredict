@@ -258,7 +258,7 @@ async function callGeminiInsight(prompt) {
                     topK: 40,
                     // ⬆️ เดิม 1200 ไม่พอสำหรับคำตอบ 400-600 คำ + โครงสร้าง 4 หัวข้อ + 3 คำแนะนำ
                     // 2500 ให้พื้นที่เพียงพอ ถ้ายังถูกตัดให้เพิ่มเป็น 4000
-                    maxOutputTokens: 2500
+                    maxOutputTokens: 4000
                 }
             });
 
