@@ -162,7 +162,7 @@ const config = {
     channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
     channelSecret: process.env.LINE_CHANNEL_SECRET,
     httpConfig: {
-        timeout: 10000 // 10 วินาที
+        timeout: 10000
     }
 };
 
@@ -232,12 +232,6 @@ function matchFarmType(text) {
     return found ? found.value : null;
 }
 
-/**
- * Handles a text message during onboarding (province/farm type selection).
- * Returns true if the message was consumed as an onboarding step
- * (caller should stop processing further), false if profile is complete
- * (caller should proceed with normal accounting flow).
- */
 async function handleOnboardingStep(event, userId, text) {
     const profile = await getUserProfile(userId);
 
@@ -437,8 +431,7 @@ const CATEGORY_RULES = [
 ];
 
 // =====================
-// WEBHOOK — FIX: await งานทั้งหมดให้เสร็จก่อนตอบ 200
-// (Vercel serverless freeze เมื่อ response ออก → background ถูกตัด)
+// WEBHOOK
 // =====================
 app.post('/webhook', line.middleware(config), async (req, res) => {
     const events = req.body.events || [];
@@ -469,7 +462,7 @@ app.post('/webhook', line.middleware(config), async (req, res) => {
 app.use(express.json());
 
 // =====================
-// DASHBOARD — FIX: เพิ่ม route GET /dashboard (เดิม 404)
+// DASHBOARD
 // =====================
 app.get('/dashboard', (req, res) => {
     try {
@@ -482,7 +475,7 @@ app.get('/dashboard', (req, res) => {
 });
 
 // =====================
-// DASHBOARD DATA APIs — FIX: routes ที่ views/dashboard.js เรียก แต่เดิมไม่มี
+// DASHBOARD DATA APIs
 // =====================
 app.get('/api/recent', async (req, res) => {
     try {
@@ -494,7 +487,6 @@ app.get('/api/recent', async (req, res) => {
 
         const rows = await getRecentTransactions(userId, limit);
 
-        // map createdAt ให้ dashboard อ่านได้ (pg คืน column เป็น lowercase: createdat)
         const items = rows.map((r) => ({
             id: r.id,
             type: r.type,
@@ -557,7 +549,7 @@ app.get('/api/monthly-summary', async (req, res) => {
 });
 
 // =====================
-// RESET — FIX: push ก่อน แล้วค่อยตอบ (Vercel ตัด push หลัง response)
+// RESET
 // =====================
 app.post('/api/reset-today', async (req, res) => {
     try {
@@ -655,16 +647,21 @@ function classifyCategory(text) {
 // =====================
 // PARSE MESSAGE HELPERS
 // =====================
+
+// FIX #1: normalizeText — preserve newlines, collapse ONLY horizontal whitespace
 function normalizeText(text) {
-    return text
+    return String(text || '')
         .toLowerCase()
-        .replace(/\s+/g, ' ')
-        .replace(/บาทถ้วน/g, ' บาท')
-        .replace(/บาท/g, ' บาท ')
-        .replace(/,\s*/g, ',')
+        .replace(/\r\n?/g, '\n')             // CRLF/CR → LF
+        .replace(/[ \t]+/g, ' ')              // collapse horizontal whitespace only
+        .replace(/บาทถ้วน/g, 'บาท')           // strip ถ้วน suffix
+        .replace(/บาท/g, ' บาท ')             // pad บาท with spaces
+        .replace(/ +/g, ' ')                  // collapse multi-space
+        .replace(/ ?\n ?/g, '\n')             // trim spaces around newlines
         .trim();
 }
 
+// FIX #2: detectType — add จ้าง and เติม (previously missing, causing จ้างรถเกี่ยว 4000 to be skipped)
 function detectType(text) {
     const input = String(text || '').trim().toLowerCase();
 
@@ -674,7 +671,7 @@ function detectType(text) {
         return 'income';
     }
 
-    if (/(ซื้อ|รายจ่าย|จ่าย|ค่า|ค่าส่ง|โอนออก|เสีย|หมดไป|ผ่อน|ชำระ|ซ่อม|บำรุง|เปลี่ยนอะไหล่)/.test(input)) {
+    if (/(ซื้อ|รายจ่าย|จ่าย|ค่า|ค่าส่ง|โอนออก|เสีย|หมดไป|ผ่อน|ชำระ|ซ่อม|บำรุง|เปลี่ยนอะไหล่|จ้าง|เติม)/.test(input)) {
         return 'expense';
     }
 
@@ -854,6 +851,96 @@ function isLineNetworkTimeout(error) {
     );
 }
 
+// =====================
+// FIX #3: parseMessage — split by ACTIVITY keyword, then match amount per segment
+// =====================
+
+// Activity keywords ordered: longer alternatives first so "รายจ่าย" matches before "จ่าย",
+// "ได้เงิน" matches before implicit bare "ได้", etc.
+const ACTIVITY_REGEX = /(รายรับ|รายจ่าย|ได้เงิน|ได้มา|รับมา|รับเงิน|โอนเข้า|โอนออก|เงินเข้า|เงินออก|ซื้อ|ขาย|จ่าย|จ้าง|เติม|ผ่อน|ชำระ|ซ่อม|บำรุง|เสีย|หมดไป)/g;
+
+/**
+ * Parse a single line by first splitting into ACTIVITY segments,
+ * then matching the amount within each segment.
+ * This prevents type contamination across activities.
+ */
+function parseLineByActivity(line) {
+    const matches = [...line.matchAll(ACTIVITY_REGEX)];
+
+    // No activity keywords → fallback to single-segment parse
+    if (matches.length === 0) {
+        const tx = parseSegment(line);
+        return tx ? [tx] : [];
+    }
+
+    // Text before the first activity keyword (e.g., "วันนี้ " in "วันนี้ซื้อปุ๋ย 500")
+    const prologue = matches[0].index > 0 ? line.slice(0, matches[0].index).trim() : '';
+
+    // Build one segment per activity keyword
+    const segments = [];
+    for (let i = 0; i < matches.length; i++) {
+        const start = matches[i].index;
+        const end = i + 1 < matches.length ? matches[i + 1].index : line.length;
+        segments.push(line.slice(start, end).trim());
+    }
+
+    // Handle prologue: if it contains an amount but the first segment does not,
+    // attach it to the first segment (e.g., "500 บาท ซื้อปุ๋ย" → "500 บาท ซื้อปุ๋ย")
+    if (prologue) {
+        const prologueHasAmount = /\d/.test(prologue);
+        const firstSegmentHasAmount = segments.length > 0 && /\d/.test(segments[0]);
+
+        if (prologueHasAmount && !firstSegmentHasAmount && segments.length > 0) {
+            segments[0] = prologue + ' ' + segments[0];
+        }
+        // Otherwise discard prologue (no activity → cannot assign a reliable type)
+    }
+
+    const results = [];
+    for (const segment of segments) {
+        const tx = parseSegment(segment);
+        if (tx) results.push(tx);
+    }
+    return results;
+}
+
+/**
+ * Parse a segment (starts with an activity keyword) and extract exactly one transaction.
+ * Returns null if no valid amount or type cannot be determined.
+ */
+function parseSegment(segment) {
+    if (!segment) return null;
+
+    const best = findBestAmountMatch(segment);
+    if (!best) return null;
+
+    const leftContext = segment.slice(0, best.start).trim();
+
+    // Type detection: prefer context BEFORE the amount (names the activity);
+    // fall back to the whole segment (e.g., "500 บาท ซื้อปุ๋ย" case)
+    let type = detectType(leftContext);
+    if (!type) type = detectType(segment);
+    if (!type) return null;
+
+    // Note = cleaned left context; fallback to segment minus amount
+    let note = cleanItemText(leftContext).replace(/\s+/g, ' ').trim();
+
+    if (!note) {
+        note = cleanItemText(segment.replace(best.amountRaw, ' '))
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    if (!note) note = 'ไม่ระบุ';
+
+    // Deduplicate adjacent repeats (e.g., "ซื้อของ ซื้อของ" → "ซื้อของ")
+    note = note.replace(/(.+)\s+\1$/, '$1');
+
+    const category = classifyCategory(note);
+
+    return { type, amount: best.amount, category, note };
+}
+
 function parseMessage(text) {
     const normalized = normalizeText(text);
 
@@ -861,71 +948,24 @@ function parseMessage(text) {
         .replace(/สรุปวันนี้|สรุปรายวัน|สรุป/g, ' ')
         .trim();
 
-    if (!cleaned) {
-        return [];
-    }
+    if (!cleaned) return [];
 
+    // Preserve newlines so multi-line messages are processed line-by-line
     const lines = cleaned
         .split('\n')
-        .map(line => line.trim())
+        .map((line) => line.trim())
         .filter(Boolean);
 
-    const inputLines = lines.length > 0 ? lines : [cleaned];
     const results = [];
-    let lastType = null;
 
-    for (const line of inputLines) {
-        const best = findBestAmountMatch(line);
-
-        if (!best) {
-            continue;
+    for (const line of lines) {
+        const lineTxs = parseLineByActivity(line);
+        for (const tx of lineTxs) {
+            results.push(tx);
         }
-
-        const leftContext = line.slice(0, best.start).trim();
-
-        let type = detectType(leftContext);
-
-        if (!type) {
-            type = detectType(line);
-        }
-
-        if (!type && lastType) {
-            type = lastType;
-        }
-
-        if (!type && /(ซื้อ|ขาย|จ่าย|ได้เงิน|ได้มา|รับมา|รับเงิน|ค่า|เติม|ผ่อน|จ้าง)/.test(line)) {
-            type = /(ขาย|ได้เงิน|ได้มา|รับมา|รับเงิน)/.test(line) ? 'income' : 'expense';
-        }
-
-        if (!type) {
-            continue;
-        }
-
-        if (type) {
-            lastType = type;
-        }
-
-        let note = cleanItemText(leftContext);
-        note = note.replace(/(.+)\s+\1$/, '$1');
-        if (!note) {
-            note = cleanItemText(line.replace(best.amountRaw, ' '));
-        }
-
-        note = note
-            .replace(/\s+/g, ' ')
-            .trim();
-
-        const category = classifyCategory(note || line || 'อื่นๆ');
-
-        results.push({
-            type,
-            amount: best.amount,
-            category,
-            note: note || 'ไม่ระบุ'
-        });
     }
 
-    return results.filter(tx => tx.type && tx.amount > 0);
+    return results.filter((tx) => tx.type && tx.amount > 0);
 }
 
 // =====================
@@ -956,12 +996,11 @@ async function safePush(userId, text) {
 }
 
 // =====================
-// HANDLE EVENT — FIX: follow ใช้ replyToken ครั้งเดียว + saveTransaction ส่ง sourceMessageId
+// HANDLE EVENT
 // =====================
 async function handleEvent(event) {
     if (!event || !event.type) return;
 
-    // FIX: await schema ready (กัน cold start ทำ query ก่อนตารางถูกสร้าง)
     try {
         await dbReady;
     } catch (readyError) {
@@ -969,9 +1008,6 @@ async function handleEvent(event) {
         return;
     }
 
-    // -------- FOLLOW --------
-    // FIX: replyToken ใช้ได้ครั้งเดียว → รวม welcome + quick reply ใน reply เดียว
-    // FIX: ส่ง quick reply เฉพาะเมื่อ profile ยังไม่ครบ (กัน overwrite province เดิม)
     if (event.type === 'follow') {
         try {
             const followUserId = event.source?.userId;
@@ -1002,7 +1038,6 @@ async function handleEvent(event) {
         return;
     }
 
-    // -------- MESSAGE --------
     if (event.type !== 'message') return;
 
     const userId = event.source?.userId;
@@ -1023,25 +1058,21 @@ async function handleEvent(event) {
         text
     });
 
-    // 1) Onboarding
     const consumedByOnboarding = await handleOnboardingStep(event, userId, text);
     if (consumedByOnboarding) {
         return;
     }
 
-    // 2) Help
     if (isHelpCommand(text)) {
         await safeReply(event.replyToken, HELP_MESSAGE);
         return;
     }
 
-    // 3) Dashboard
     if (isDashboardCommand(text)) {
         await safeReply(event.replyToken, formatDashboardMessage(userId));
         return;
     }
 
-    // 4) Summary — FIX: getTodaySummary คืน object → ต้อง format เป็น string ก่อนส่ง
     if (isSummaryCommand(text)) {
         try {
             const summary = await getTodaySummaryAsync(userId);
@@ -1053,7 +1084,6 @@ async function handleEvent(event) {
         return;
     }
 
-    // 5) AI Insight — FIX: generateAIInsight(userId) รับ userId เดียว (ไม่ใช่ profile/category)
     if (isAIInsightCommand(text)) {
         try {
             const allowed = await canUseAI(userId);
@@ -1070,7 +1100,6 @@ async function handleEvent(event) {
         return;
     }
 
-    // 6) Parse
     const parsedList = parseMessage(text);
 
     if (!parsedList || parsedList.length === 0) {
@@ -1078,7 +1107,7 @@ async function handleEvent(event) {
         return;
     }
 
-    // 7) Save — FIX: ส่ง sourceMessageId + sourceTxnIndex เพื่อให้ dedup ทำงาน
+    // Save each transaction individually with (messageId, index) for dedup
     const savedList = [];
     for (let index = 0; index < parsedList.length; index++) {
         const tx = parsedList[index];
@@ -1101,7 +1130,6 @@ async function handleEvent(event) {
         return;
     }
 
-    // 8) Reply
     await safeReply(event.replyToken, formatSuccessReply(savedList));
 }
 
