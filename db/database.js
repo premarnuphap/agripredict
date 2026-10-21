@@ -37,6 +37,17 @@ async function initDb() {
         ON transactions (sourceMessageId, sourceTxnIndex)
     `);
 
+    // ✅ FIX: ai_usage table — canUseAI() ใช้ตารางนี้ แต่ initDb เดิมไม่ได้สร้าง
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS ai_usage (
+            id SERIAL PRIMARY KEY,
+            userId TEXT NOT NULL,
+            usageDate DATE NOT NULL,
+            usedCount INTEGER NOT NULL DEFAULT 0,
+            UNIQUE(userId, usageDate)
+        )
+    `);
+
     console.log('✅ Connected to PostgreSQL database and ensured schema');
 }
 
