@@ -47,8 +47,6 @@ function isTodayBangkok(createdAtValue) {
 }
 
 function getCreatedAt(item) {
-    // Postgres returns lowercase unquoted identifiers (createdat), but stay
-    // defensive in case the underlying row shape ever changes.
     return item.createdat || item.createdAt;
 }
 
@@ -89,22 +87,8 @@ function isTodayDataEmpty(data) {
 }
 
 // =====================
-// PROMPT (minimal payload, strict output contract)
-// =====================
-// ============================================================================
-// RECOMMENDED GEMINI GENERATION CONFIG VALUES
-// ============================================================================
-// เพื่อให้ได้คำตอบภาษาไทยที่สละสลวย เป็นธรรมชาติ ลื่นไหล ไม่ตัดแปะเป็นคำสั้นๆ 
-// และรองรับความยาว 400-600 คำ (ประมาณ 1 หน้าจอโทรศัพท์มือถือ) ได้อย่างสมบูรณ์:
-// - temperature: ขยับขึ้นเป็น 0.6 เพื่อให้ภาษาดูเป็นธรรมชาติและเป็นมนุษย์มากขึ้น แต่ไม่สูงเกินไปจนผิดเพี้ยน
-// - topP: 0.9 และ topK: 40 เพื่อให้การเลือกสรรคำภาษาไทยมีความหลากหลายและต่อเนื่อง
-// - maxOutputTokens: ขยายเป็น 1200 เพื่อรองรับเนื้อหาที่ละเอียดและมีคุณภาพตามที่คาดหวัง
-// ============================================================================
-
-// =====================
 // PROMPT ENGINEERING & CONSTRUCTION
 // =====================
-
 function buildPrompt(data) {
     const { todaySummary, incomeList, expenseList, province, farmType } = data;
 
@@ -123,7 +107,7 @@ function buildPrompt(data) {
     ].join('\n');
 
     return `
-คุณคือ "ที่ปรึกษาอาวุโสด้านการเงินและการจัดการฟาร์มเกษตรในประเทศไทย" ผู้มีความเชี่ยวชาญ คลุกคลีกับวิถีชีวิตเกษตรกรไทยมาอย่างยาวนาน มีบุคลิกเป็นมิตร อบอุ่น สุภาพ และน่าเชื่อถือ 
+คุณคือ "ที่ปรึกษาอาวุโสด้านการเงินและการจัดการฟาร์มเกษตรในประเทศไทย" ผู้มีความเชี่ยวชาญ คลุกคลีกับวิถีชีวิตเกษตรกรไทยมาอย่างยาวนาน มีบุคลิกเป็นมิตร อบอุ่น สุภาพ และน่าเชื่อถือ
 
 บทบาทของคุณ:
 ทำหน้าที่วิเคราะห์ข้อมูลบัญชีรายวันของเกษตรกรอย่างรอบด้าน เพื่อช่วยให้พวกเขามองเห็นภาพรวมพฤติกรรมการใช้เงิน จุดแข็งที่ทำได้ดี ความเสี่ยงที่ต้องเฝ้าระวัง และแนวทางการพัฒนาฟาร์มให้ยั่งยืน โดยใช้ภาษาที่เข้าใจง่าย เป็นธรรมชาติ เป็นกันเองแบบมืออาชีพ แต่ไม่ใช้ศัพท์ทางเทคนิคที่เข้าใจยาก และไม่พูดจาเหมือนหุ่นยนต์
@@ -132,11 +116,12 @@ function buildPrompt(data) {
 1. วิเคราะห์จาก "ข้อมูลจริงที่ให้มาด้านล่างนี้เท่านั้น" ห้ามคิดแทน ห้ามเดา ห้ามสมมติ หรือแต่งตัวเลขใด ๆ เพิ่มเติมเด็ดขาด
 2. ห้ามพูดคำว่า "AI", "ปัญญาประดิษฐ์", "โมเดลภาษา", "ระบบ", "Prompt" หรือทำตัวเป็นโปรแกรมคอมพิวเตอร์ ให้พูดในฐานะที่ปรึกษาที่เป็นมนุษย์คนหนึ่งเท่านั้น
 3. ห้ามแต่งเรื่องราวนอกเหนือข้อมูล เช่น สภาพอากาศในพื้นที่ ราคาตลาด ณ วันนี้ หรือโรคระบาดในพืช/สัตว์ ยกเว้นกรณีที่ผู้ใช้ระบุไว้ในบันทึก (Note) เท่านั้น
+4. ห้ามใช้ภาษาอังกฤษในเนื้อหาและหัวข้อย่อย ยกเว้นชื่อเฉพาะหรือชื่อทางการค้า ให้ใช้ภาษาไทยเท่านั้น (เช่น ห้ามใช้คำว่า "Concrete Action", "Key Insight", "Action", "Insight" หรือหัวข้อภาษาอังกฤษอื่น ๆ)
 
 ข้อมูลฟาร์มและบริบทผู้ใช้งาน:
 - จังหวัดที่ตั้งฟาร์ม: ${province}
 - ประเภทการเกษตร: ${farmType}
-(หมายเหตุ: ใช้ข้อมูลทำเลและประเภทเกษตรนี้ในการวิเคราะห์ความเหมาะสมของรายรับรายจ่ายอย่างสมเหตุสมผล)
+(หมายเหตุ: ใช้ข้อมูลทำเลและประเภทเกษตรนี้ในการวิเคราะห์ความเหมาะสมของรายรับรายจ่ายอย่างสมเหตุสมผล หากข้อมูลไม่เพียงพอให้ใช้คำแนะนำแบบมีเงื่อนไข เช่น "หากเป็นช่วงที่ต้องบำรุงพืช..." แทนการฟันธง)
 
 ข้อมูลธุรกรรมประจำวันนี้:
 [รายรับวันนี้]
@@ -159,21 +144,37 @@ ${totalsText}
 (เขียนอธิบายเป็นความเรียง 2–4 ประโยค เจาะลึกพฤติกรรมการเงินในแง่บวกของวันนี้ เช่น การสร้างรายได้ การควบคุมต้นทุน หรือบันทึกที่มีประโยชน์)
 
 ⚠️ สิ่งที่ควรระวัง
-(เขียนอธิบายเป็นความเรียง 2–4 ประโยค ชี้ให้เห็นถึงจุดเสี่ยง ความไม่สมดุลของรายจ่าย หรือค่าใช้จ่ายแฝงที่เกิดขึ้นจากข้อมูลวันนี้ หากไม่มีจุดน่ากังวลเลย ให้เขียนอธิบายว่า "- วันนี้การบริหารเงินยังคงเป็นไปได้ด้วยดี ไม่พบจุดน่ากังวลชัดเจน")
+(เขียนอธิบายเป็นความเรียง 2–4 ประโยค ชี้ให้เห็นถึงจุดเสี่ยง ความไม่สมดุลของรายจ่าย หรือค่าใช้จ่ายแฝงที่เกิดขึ้นจากข้อมูลวันนี้ หากไม่มีจุดน่ากังวลเลย ให้เขียนอธิบายว่า "วันนี้การบริหารเงินยังคงเป็นไปได้ด้วยดี ไม่พบจุดน่ากังวลชัดเจน")
 
 🌱 คำแนะนำ
-(ให้คำแนะนำที่ลึกซึ้ง ปฏิบัติได้จริง และมีประโยชน์ต่อเกษตรกรอย่างน้อย 3 ข้อ โดยแต่ละข้อต้องประกอบด้วย "หัวข้อแนะนำ - อธิบายเหตุผลความสำคัญ - แนวทางปฏิบัติเชิงรูปธรรม")
-1. ...
-2. ...
-3. ...
+(ให้คำแนะนำที่ลึกซึ้ง ปฏิบัติได้จริง และมีประโยชน์ต่อเกษตรกร 3 ข้อ โดยแต่ละข้อต้องเขียนในรูปแบบนี้เท่านั้น)
+
+รูปแบบของแต่ละข้อ (ภาษาไทยล้วน ห้ามใช้หัวข้อย่อยภาษาอังกฤษ):
+
+1. [ชื่อคำแนะนำสั้น ๆ] — [อธิบายเหตุผลว่าทำไมจึงควรทำ] — [บอกวิธีปฏิบัติที่ชัดเจนเป็นรูปธรรม]
+
+2. [ชื่อคำแนะนำสั้น ๆ] — [อธิบายเหตุผล] — [วิธีปฏิบัติ]
+
+3. [ชื่อคำแนะนำสั้น ๆ] — [อธิบายเหตุผล] — [วิธีปฏิบัติ]
 
 ---
-เป้าหมายความยาว: เขียนอธิบายให้ได้เนื้อหาที่สมบูรณ์ ครบถ้วน ได้ความยาวรวมประมาณ เพื่อความละเอียดและเป็นประโยชน์สูงสุดแก่เกษตรกร
+
+เป้าหมายความยาว:
+เขียนประมาณ 400–600 คำภาษาไทย โดยเน้นเนื้อหาที่มีประโยชน์มากกว่าการยืดข้อความ ทุกหัวข้อต้องมีเนื้อหาครบถ้วน
+
+ข้อกำหนดการจบคำตอบ (สำคัญมากที่สุด):
+- เขียนให้จบประโยคและจบหัวข้อทุกส่วน ทั้ง 4 หัวข้อ (ภาพรวม, จุดที่ทำได้ดี, สิ่งที่ควรระวัง, คำแนะนำ)
+- คำแนะนำทั้ง 3 ข้อต้องมี "ชื่อคำแนะนำ — เหตุผล — วิธีปฏิบัติ" ครบทุกส่วน
+- ห้ามหยุดกลางประโยคหรือกลางคำแนะนำโดยเด็ดขาด
+- ห้ามใช้เครื่องหมาย "..." แทนเนื้อหาที่ยังเขียนไม่จบ
+- หากเนื้อหายาวเกินไป ให้ย่อแต่ละหัวข้อให้กระชับลง แต่ต้องเขียนให้จบทุกหัวข้อ
+- หากข้อมูลมีจำกัด ให้ตอบเท่าที่ข้อมูลรองรับโดยเขียนให้สมบูรณ์
+- ห้ามสร้างตัวเลขหรือข้อเท็จจริงเพิ่มเติมเพื่อให้ครบความยาว
 `.trim();
 }
 
 // =====================
-// PUBLIC ENTRY POINT (UPDATED PROMPT CONSTRUCTION)
+// PUBLIC ENTRY POINT
 // =====================
 async function generateAIInsight(userId) {
     if (!process.env.GEMINI_API_KEY) {
@@ -191,13 +192,11 @@ async function generateAIInsight(userId) {
             return '📊 วันนี้ยังไม่มีรายการบันทึก\nลองบันทึกรายรับ-รายจ่ายก่อนแล้วลองใหม่อีกครั้ง';
         }
 
-        // ปรับปรุงการส่งต่อข้อมูลโปรไฟล์ฟาร์มเข้าไปใน data object เพื่อส่งให้ buildPrompt() ประมวลผลอย่างเป็นระบบ
         data.province = province;
         data.farmType = farmType;
 
         const prompt = buildPrompt(data);
-        
-        // ส่ง prompt ไปยังโมเดล Gemini โดยใช้ข้อกำหนด Config ที่เหมาะสมที่สุดสำหรับคำตอบภาษาไทยที่เป็นธรรมชาติ
+
         return await callGeminiInsight(prompt);
     } catch (error) {
         console.error('❌ Gemini insight error:', {
@@ -209,6 +208,10 @@ async function generateAIInsight(userId) {
 
         if (error.message === 'NO_API_KEY') {
             return '⚠️ ระบบวิเคราะห์ยังไม่พร้อมใช้งานในตอนนี้\nกรุณาลองใหม่ภายหลัง';
+        }
+
+        if (error.message === 'GEMINI_MAX_RETRIES_EXCEEDED') {
+            return '⚠️ ระบบ AI มีผู้ใช้งานจำนวนมากในขณะนี้\nกรุณาลองใหม่อีกครั้งในอีกสักครู่';
         }
 
         const statusCode = error.status || error.code;
@@ -231,7 +234,7 @@ async function generateAIInsight(userId) {
 }
 
 // =====================
-// GEMINI CALL (SHOWING THE IMPLEMENTATION WITH PREFERRED CONFIG FOR INTEGRATION)
+// GEMINI CALL (UPDATED)
 // =====================
 async function callGeminiInsight(prompt) {
     const ai = getGeminiClient();
@@ -250,23 +253,52 @@ async function callGeminiInsight(prompt) {
                 model,
                 contents: prompt,
                 config: {
-                    temperature: 0.6,          // ปรับปรุงค่าตามคำแนะนำเพื่อให้ได้เนื้อหาเป็นธรรมชาติมากขึ้น
-                    topP: 0.9,                 // ปรับปรุงค่าตามคำแนะนำเพื่อลดการทับศัพท์และประโยคหุ่นยนต์
-                    topK: 40,                  // ปรับปรุงค่าตามคำแนะนำเพื่อให้กระจายคำภาษาไทยได้สมดุล
-                    maxOutputTokens: 1200      // ขยายขนาด Tokens เพื่อให้ได้ความยาว 400-600 คำอย่างสมบูรณ์
+                    temperature: 0.6,
+                    topP: 0.9,
+                    topK: 40,
+                    // ⬆️ เดิม 1200 ไม่พอสำหรับคำตอบ 400-600 คำ + โครงสร้าง 4 หัวข้อ + 3 คำแนะนำ
+                    // 2500 ให้พื้นที่เพียงพอ ถ้ายังถูกตัดให้เพิ่มเป็น 4000
+                    maxOutputTokens: 2500
                 }
             });
 
-            console.log("========== GEMINI RESPONSE ==========");
-            console.dir(response, { depth: null });
-            
-            console.log("========== RESPONSE.TEXT ==========");
-            console.log(response.text);
-            
-            console.log("========== LENGTH ==========");
-            console.log(response.text?.length);
-            
-            return response.text?.trim() || '⚠️ ไม่สามารถสร้างคำวิเคราะห์ได้ในขณะนี้';
+            const candidate = response.candidates?.[0];
+            const finishReason = candidate?.finishReason || null;
+            const finishMessage = candidate?.finishMessage || null;
+            const text = (response.text || "").trim();
+
+            // Structured diagnostics — no full dump, no secrets
+            console.log("[GEMINI_DIAGNOSTICS]", {
+                modelVersion: response.modelVersion || null,
+                finishReason,
+                finishMessage,
+                promptTokenCount: response.usageMetadata?.promptTokenCount ?? null,
+                candidatesTokenCount: response.usageMetadata?.candidatesTokenCount ?? null,
+                totalTokenCount: response.usageMetadata?.totalTokenCount ?? null,
+                textLength: text.length
+            });
+
+            if (!text) {
+                return '⚠️ ไม่สามารถสร้างคำวิเคราะห์ได้ในขณะนี้';
+            }
+
+            if (finishReason === "MAX_TOKENS") {
+                console.warn("[GEMINI_TRUNCATED] Output token limit reached. Consider increasing maxOutputTokens.");
+                // คงคืนข้อความที่ได้เพื่อไม่ให้ผู้ใช้เห็นหน้าว่าง
+                return text;
+            }
+
+            if (finishReason === "SAFETY" || finishReason === "PROHIBITED_CONTENT" || finishReason === "BLOCKLIST") {
+                console.warn(`[GEMINI_BLOCKED] finishReason=${finishReason}`);
+                return '⚠️ ไม่สามารถสร้างคำวิเคราะห์ได้ในขณะนี้ กรุณาลองใหม่ภายหลัง';
+            }
+
+            if (finishReason === "RECITATION") {
+                console.warn("[GEMINI_RECITATION] Content may contain recited material.");
+                return '⚠️ ไม่สามารถสร้างคำวิเคราะห์ได้ในขณะนี้ กรุณาลองใหม่ภายหลัง';
+            }
+
+            return text;
         } catch (error) {
             const statusCode = error.status || error.code;
             const message = String(error.message || "").toLowerCase();
@@ -284,9 +316,10 @@ async function callGeminiInsight(prompt) {
             throw error;
         }
     }
+
+    throw new Error('GEMINI_MAX_RETRIES_EXCEEDED');
 }
 
-// Named export mapping architecture
 module.exports = {
     generateAIInsight
 };
